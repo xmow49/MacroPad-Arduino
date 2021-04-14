@@ -1,36 +1,45 @@
 #include <Arduino.h>
-
+#include <pins.h>
 #define HID_CUSTOM_LAYOUT
 #define LAYOUT_FRENCH
 #include <HID-Project.h>
-
 #include <EEPROM.h>
 
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <Fonts/FreeSans9pt7b.h>
+#include <Fonts/FreeSans12pt7b.h>
+
+//List of action
 String strAction[] = {"MediaFastForward", "MediaRewind", "MediaNext", "MediaPrevious", "MediaStop", "MediaPlayPause",
                       "MediaVolumeMute", "MediaVolumeUP", "MediaVolumeDOWN",
                       "ConsumerEmailReader", "ConsumerCalculator", "ConsumerExplorer",
                       "ConsumerBrowserHome", "ConsumerBrowserBack", "ConsumerBrowserForward", "ConsumerBrowserRefresh", "ConsumerBrowserBookmarks"};
 
+//List of actions in Hex
 short hexAction[] = {0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xCD,
                      0xE2, 0xE9, 0xEA,
                      0x18A, 0x192, 0x194,
                      0x223, 0x224, 0x225, 0x227, 0x22A};
 
+//List of key current action
 short keyAction[6] = {0, 0, 0, 0, 0, 0};
 
-short keyCombination[5*6];
+short keyCombination[5 * 6];
 
-const int PinA = 7;
-//const int PinB = 6;
+int lastCount0 = 50;
+volatile int virtualPosition0 = 50;
 
-const int PinB1 = 6;
-const int PinB2 = 5;
-const int PinB3 = 4;
+int lastCount1 = 50;
+volatile int virtualPosition1 = 50;
 
-int lastCount = 50;
-volatile int virtualPosition = 50;
+int lastCount2 = 50;
+volatile int virtualPosition2 = 50;
 
 String serialMsg;
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 String getArgs(String data, char separator, int index)
 {
@@ -66,28 +75,60 @@ short getNumberArgs(String data, char separator)
   return nArgs;
 }
 
-void isr()
+void encoder0()
 {
   static unsigned long lastInterruptTime = 0;
   unsigned long interruptTime = millis();
 
-  // If interrupts come faster than 5ms, assume it's a bounce and ignore
   if (interruptTime - lastInterruptTime > 5)
   {
-
-    if (analogRead(A0) == 0)
+    if (digitalRead(encoderB0) == 0)
     {
-      virtualPosition = virtualPosition - 10; // Could be -5 or -10
+      virtualPosition0 = virtualPosition0 - 10;
     }
     else
     {
-      virtualPosition = virtualPosition + 10; // Could be +5 or +10
+      virtualPosition0 = virtualPosition0 + 10;
     }
-
-    // Restrict value from 0 to +100
-    //virtualPosition = min(100, max(0, virtualPosition));
   }
-  // Keep track of when we were here last (no more than every 5ms)
+  lastInterruptTime = interruptTime;
+}
+
+void encoder1()
+{
+  static unsigned long lastInterruptTime = 0;
+  unsigned long interruptTime = millis();
+
+  if (interruptTime - lastInterruptTime > 5)
+  {
+    if (digitalRead(encoderB1) == 0)
+    {
+      virtualPosition1 = virtualPosition1 - 10;
+    }
+    else
+    {
+      virtualPosition1 = virtualPosition1 + 10;
+    }
+  }
+  lastInterruptTime = interruptTime;
+}
+
+void encoder2()
+{
+  static unsigned long lastInterruptTime = 0;
+  unsigned long interruptTime = millis();
+
+  if (interruptTime - lastInterruptTime > 5)
+  {
+    if (digitalRead(encoderB2) == 0)
+    {
+      virtualPosition2 = virtualPosition2 - 10;
+    }
+    else
+    {
+      virtualPosition2 = virtualPosition2 + 10;
+    }
+  }
   lastInterruptTime = interruptTime;
 }
 
@@ -133,7 +174,7 @@ void saveToEEPROM()
         Serial.print(key);
         Serial.print(": ");
         Serial.println(hexAction[i]);
-
+        EEPROM.put(eepromAddress, hexAction[i]);
         eepromAddress += sizeof(hexAction[i]);
         break;
       }
@@ -176,52 +217,112 @@ int getAction(String action)
   return 0;
 }
 
+
+void setText(String txt, unsigned short size = 1, GFXfont *f = &FreeSans9pt7b, int x = 0, int y = 0, bool color = 1){
+  display.setTextSize(size);
+  display.setTextColor(color);
+  display.setFont(f);
+  display.setCursor(x, y);
+  display.print(txt);
+}
+
 void setup()
 {
 
   Serial.begin(9600);
 
-  pinMode(PinA, INPUT);
+  //------------Keys--------------
+  pinMode(key0, INPUT);
+  pinMode(key1, INPUT);
+  pinMode(key2, INPUT);
+  pinMode(key3, INPUT);
+  pinMode(key4, INPUT);
+  pinMode(key5, INPUT);
 
-  pinMode(PinB1, INPUT);
-  pinMode(PinB2, INPUT);
-  pinMode(PinB3, INPUT);
+  //------------Encoders----------
+  pinMode(encoderA0, INPUT);
+  pinMode(encoderB0, INPUT);
+  pinMode(encoder0Key, INPUT);
 
-  attachInterrupt(digitalPinToInterrupt(PinA), isr, LOW);
+  pinMode(encoderA1, INPUT);
+  pinMode(encoderB1, INPUT);
+  pinMode(encoder1Key, INPUT);
+
+  pinMode(encoderA2, INPUT);
+  pinMode(encoderA2, INPUT);
+  pinMode(encoder2Key, INPUT);
+
+  //------------Interrupts----------
+  attachInterrupt(digitalPinToInterrupt(encoderA0), encoder0, LOW);
+  attachInterrupt(digitalPinToInterrupt(encoderA1), encoder1, LOW);
+  attachInterrupt(digitalPinToInterrupt(encoderA2), encoder2, LOW);
+
   Serial.println("Start");
   Consumer.begin();
+
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println("MacroPad");
+  display.setFont(&FreeSans12pt7b);
+  display.display();
+  delay(2000);
 }
+
+const short repeatDelay = 500;
 
 void loop()
 {
+  int currentMillis = millis();
 
-  if (digitalRead(PinB1))
+  //-----------------------Key0------------------------
+  if (digitalRead(key0))
   {
-    while (digitalRead(PinB1))
-    {
-    }
     Consumer.write(keyAction[0]);
-  }
-  if (digitalRead(PinB2))
-  {
-    while (digitalRead(PinB2))
+    while (digitalRead(key0))
     {
+      if (currentMillis + repeatDelay <= millis())
+      {
+        Consumer.write(keyAction[0]);
+        delay(50);
+      }
     }
+  }
+
+  //-----------------------Key1------------------------
+  if (digitalRead(key1))
+  {
     Consumer.write(keyAction[1]);
-  }
-  if (digitalRead(PinB3))
-  {
-    while (digitalRead(PinB3))
+    while (digitalRead(key1))
     {
+      if (currentMillis + repeatDelay <= millis())
+      {
+        Consumer.write(keyAction[1]);
+        delay(50);
+      }
     }
-    Consumer.write(keyAction[2]);
   }
-  if (virtualPosition != lastCount)
+
+  //-----------------------Key2------------------------
+  if (digitalRead(key2))
+  {
+    Consumer.write(keyAction[2]);
+    while (digitalRead(key2))
+    {
+      if (currentMillis + repeatDelay <= millis())
+      {
+        Consumer.write(keyAction[2]);
+        delay(50);
+      }
+    }
+  }
+
+  if (virtualPosition0 != lastCount0)
   {
     //Serial.print(virtualPosition > lastCount ? "Up  :" : "Down:");
     //Serial.println(virtualPosition);
 
-    if (virtualPosition > lastCount)
+    if (virtualPosition0 > lastCount0)
     {
       Serial.println("Encoder1:UP");
       //Consumer.write(MEDIA_VOL_UP);
@@ -231,7 +332,7 @@ void loop()
       //Consumer.write(MEDIA_VOL_DOWN);
       Serial.println("Encoder1:DOWN");
     }
-    lastCount = virtualPosition;
+    lastCount0 = virtualPosition0;
   }
 
   if (Serial.available() > 0)
@@ -244,38 +345,42 @@ void loop()
       Serial.println("pong");
     }
 
-    if (serialMsg.indexOf("set") > -1)
+    String command = getArgs(serialMsg, ' ', 0);
+    String arg1 = getArgs(serialMsg, ' ', 1);
+    String arg2 = getArgs(serialMsg, ' ', 2);
+    String arg3 = getArgs(serialMsg, ' ', 3);
+    if (command == "set-key")
     {
-      if (serialMsg.indexOf("key") > -1)
+      if (arg2 == "action")
       {
-        if (serialMsg.indexOf("action") > -1)
-        {
-          int key = getArgs(serialMsg, ' ', 2).toInt();
-          String action = getArgs(serialMsg, ' ', 4);
-          keyAction[key] = getAction(action);
-        }
-        else if (serialMsg.indexOf("combination") > -1)
-        {
-          short numberOfKey = getNumberArgs(serialMsg, ' ') - 3;
-          int key = getArgs(serialMsg, ' ', 2).toInt();
-          serialMsg.remove(0, 22);
+        int key = arg1.toInt();
+        keyAction[key] = getAction(arg3);
+      }
+      else if (arg2 == "combination")
+      {
+        short numberOfKey = getNumberArgs(serialMsg, ' ') - 3;
+        int key = getArgs(serialMsg, ' ', 2).toInt();
+        serialMsg.remove(0, 22);
 
-          keyAction[key] = -1;
-        }
+        keyAction[key] = -1;
       }
     }
-    else if (serialMsg.indexOf("get") > -1)
+    else if (command == "get")
     {
       if (serialMsg.indexOf("config") > -1)
       {
         getstrAction();
       }
     }
-    else if (serialMsg.indexOf("save") > -1)
+    else if (arg2 == "set-text")
+    {
+    }
+
+    else if (command == "save")
     {
       saveToEEPROM();
     }
-    else if (serialMsg.indexOf("read") > -1)
+    else if (command == "read")
     {
       readEEPROM();
     }
