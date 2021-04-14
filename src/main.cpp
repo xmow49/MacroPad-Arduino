@@ -18,7 +18,7 @@ short hexAction[] = {0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xCD,
 
 short keyAction[6] = {0, 0, 0, 0, 0, 0};
 
-short keyCombination[10];
+short keyCombination[5*6];
 
 const int PinA = 7;
 //const int PinB = 6;
@@ -200,8 +200,6 @@ void loop()
     while (digitalRead(PinB1))
     {
     }
-    Keyboard.write('a');
-
     Consumer.write(keyAction[0]);
   }
   if (digitalRead(PinB2))
@@ -226,11 +224,11 @@ void loop()
     if (virtualPosition > lastCount)
     {
       Serial.println("Encoder1:UP");
-      Consumer.write(MEDIA_VOL_UP);
+      //Consumer.write(MEDIA_VOL_UP);
     }
     else
     {
-      Consumer.write(MEDIA_VOL_DOWN);
+      //Consumer.write(MEDIA_VOL_DOWN);
       Serial.println("Encoder1:DOWN");
     }
     lastCount = virtualPosition;
@@ -259,12 +257,10 @@ void loop()
         else if (serialMsg.indexOf("combination") > -1)
         {
           short numberOfKey = getNumberArgs(serialMsg, ' ') - 3;
+          int key = getArgs(serialMsg, ' ', 2).toInt();
           serialMsg.remove(0, 22);
 
-          int key = getArgs(serialMsg, ' ', 2).toInt();
           keyAction[key] = -1;
-
-          
         }
       }
     }
