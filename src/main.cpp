@@ -110,59 +110,17 @@ void encoder(byte encoder)
 
 void encoder0()
 {
-  static unsigned long lastInterruptTime = 0;
-  unsigned long interruptTime = millis();
-  int i = 0;
-  if (interruptTime - lastInterruptTime > 5)
-  {
-    if (digitalRead(encoderB0) == 0)
-    {
-      encodersPosition[i] = encodersLastValue[i] - 10;
-    }
-    else
-    {
-      encodersPosition[i] = encodersLastValue[i] + 10;
-    }
-  }
-  lastInterruptTime = interruptTime;
+  encoder(0);
 }
 
 void encoder1()
 {
-  static unsigned long lastInterruptTime = 0;
-  unsigned long interruptTime = millis();
-  int i = 0;
-  if (interruptTime - lastInterruptTime > 5)
-  {
-    if (digitalRead(encoderB1) == 0)
-    {
-      encodersPosition[i] = encodersLastValue[i] - 10;
-    }
-    else
-    {
-      encodersPosition[i] = encodersLastValue[i] + 10;
-    }
-  }
-  lastInterruptTime = interruptTime;
+  encoder(1);
 }
 
 void encoder2()
 {
-  static unsigned long lastInterruptTime = 0;
-  unsigned long interruptTime = millis();
-  int i = 0;
-  if (interruptTime - lastInterruptTime > 5)
-  {
-    if (digitalRead(encoderB2) == 0)
-    {
-      encodersPosition[i] = encodersLastValue[i] - 10;
-    }
-    else
-    {
-      encodersPosition[i] = encodersLastValue[i] + 10;
-    }
-  }
-  lastInterruptTime = interruptTime;
+  encoder(2);
 }
 
 void getstrAction()
@@ -244,7 +202,7 @@ int getAction(String action)
   return 0;
 }
 
-void setText(String txt, unsigned short size = 1, GFXfont *f = &FreeSans9pt7b, int x = 0, int y = 0, bool color = 1)
+/*void setText(String txt, unsigned short size = 1, GFXfont *f = &FreeSans9pt7b, int x = 0, int y = 0, bool color = 1)
 {
   display.setTextSize(size);
   display.setTextColor(color);
@@ -252,7 +210,7 @@ void setText(String txt, unsigned short size = 1, GFXfont *f = &FreeSans9pt7b, i
   display.setCursor(x, y);
   display.print(txt);
   display.display();
-}
+}*/
 
 String screenTxt = "MacroPad";
 int xTxt = display.width();
@@ -276,6 +234,7 @@ void scrollText()
       xTxt = display.width();
     y++;
   }
+  display.clearDisplay();
   display.display();
 }
 
@@ -302,12 +261,8 @@ void setup()
 
   Consumer.begin(); //Start HID
 
-  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
-  {
-    Serial.println(F("SSD1306 allocation failed"));
-    for (;;)
-      ;
-  }
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+
   readEEPROM();
   delay(1000);
   Serial.println("Start");
@@ -318,7 +273,7 @@ const short repeatDelay = 500;
 void loop()
 {
 
-  /*  for (int i = 0; i < sizeof(keysPins) / sizeof(int *); i++)
+  for (int i = 0; i < sizeof(keysPins) / sizeof(int *); i++)
   {
     if (digitalRead(keysPins[i]))
     {
@@ -336,9 +291,9 @@ void loop()
         }
       }
     }
-  }*/
+  }
 
-  for (int i = 0; i < 3 / sizeof(int *); i++)
+  for (int i = 0; i < sizeof(encodersPosition) / sizeof(int *); i++)
   {
     if (encodersPosition[i] != encodersLastValue[i])
     {
@@ -347,12 +302,22 @@ void loop()
         Serial.print("Encoder");
         Serial.print(i);
         Serial.println(":UP");
+        if (encoderAction[i] == "system" && encoderValue[i] == "volume")
+        {
+          Consumer.write(MEDIA_VOL_UP);
+          
+        }
       }
       else
       {
         Serial.print("Encoder");
         Serial.print(i);
         Serial.println(":DOWN");
+
+        if (encoderAction[i] == "system" && encoderValue[i] == "volume")
+        {
+          Consumer.write(MEDIA_VOL_DOWN);
+        }
       }
       encodersLastValue[i] = encodersPosition[i];
     }
@@ -392,11 +357,12 @@ void loop()
 
     else if (command == "set-encoder")
     {
-      if (arg2 == "system-vol")
+      if (arg2 == "system")
       {
         int encoder = arg1.toInt();
-        encoderAction[encoder] = arg3;
-        encoderValue[encoder] = arg4;
+        encoderAction[encoder] = arg2;
+        encoderValue[encoder] = arg3;
+        Serial.println("OK");
       }
     }
 
@@ -428,4 +394,5 @@ void loop()
   }
 
   scrollText();
+  delay(10);
 }
