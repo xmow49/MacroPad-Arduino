@@ -10,13 +10,14 @@
 #include <Fonts/FreeSans9pt7b.h>
 
 //List of action
-String strAction[] = {"MediaFastForward", "MediaRewind", "MediaNext", "MediaPrevious", "MediaStop", "MediaPlayPause",
+/*const String strAction[17] PROGMEM = {"MediaFastForward", "MediaRewind", "MediaNext", "MediaPrevious", "MediaStop", "MediaPlayPause",
                       "MediaVolumeMute", "MediaVolumeUP", "MediaVolumeDOWN",
                       "ConsumerEmailReader", "ConsumerCalculator", "ConsumerExplorer",
                       "ConsumerBrowserHome", "ConsumerBrowserBack", "ConsumerBrowserForward", "ConsumerBrowserRefresh", "ConsumerBrowserBookmarks"};
+*/
 
 //List of actions in Hex
-short hexAction[] = {0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xCD,
+const short hexAction[17] PROGMEM = {0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xCD,
                      0xE2, 0xE9, 0xEA,
                      0x18A, 0x192, 0x194,
                      0x223, 0x224, 0x225, 0x227, 0x22A};
@@ -24,8 +25,8 @@ short hexAction[] = {0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xCD,
 //List of key current action
 int keyAction[6] = {0, 0, 0, 0, 0, 0};
 
-String encoderAction[3] = {"", "", ""};
-String encoderValue[3] = {"", "", ""};
+String encoderAction[] = {"", "", ""};
+String encoderValue[] = {"", "", ""};
 
 volatile int encodersPosition[3] = {50, 50, 50};
 int encodersLastValue[3] = {50, 50, 50};
@@ -140,7 +141,7 @@ void getstrAction()
           Serial.print("Key");
           Serial.print(key);
           Serial.print(": ");
-          Serial.println(strAction[i]);
+          Serial.println(hexAction[i]);
           break;
         }
       }
@@ -154,8 +155,7 @@ void saveToEEPROM()
   Serial.println("-----Save to EEPROM-----");
   volatile int key = 0;
   volatile short eepromAddress = 0;
-  int sizeKeyAction = sizeof(keyAction) / sizeof(int *);
-  for (int i = 0; i < sizeKeyAction; i++)
+  for (byte i = 0; i < sizeof(keyAction) / sizeof(int *); i++)
   {
     Serial.print("Save to EEPROM: Key");
     Serial.print(key);
@@ -165,19 +165,34 @@ void saveToEEPROM()
     eepromAddress += sizeof(keyAction[i]);
     key++;
   }
+
+  for (byte i = 0; i < sizeof(encoderAction) / sizeof(encoderAction[i]); i++)
+  {
+    Serial.print("Save to EEPROM: Encoder");
+    Serial.print(encoderAction[i]);
+    Serial.print(": ");
+    Serial.println(encoderValue[i]);
+
+    EEPROM.put(eepromAddress, encoderAction[i]);
+    eepromAddress += sizeof(encoderAction[i]);
+
+    EEPROM.put(eepromAddress, encoderValue[i]);
+    eepromAddress += sizeof(encoderValue[i]);
+  }
 }
 
 void readEEPROM()
 {
+
   volatile byte key = 0;
   volatile short eepromAddress = 0;
   volatile short action;
   int sizeKeyAction = sizeof(keyAction) / sizeof(int *);
-  int sizeHexAction = sizeof(hexAction) / sizeof(int *);
+
+  Serial.println("Read from EEPROM: Key");
   for (byte i = 0; i < sizeKeyAction; i++)
   {
     EEPROM.get(eepromAddress, action);
-    Serial.print("Read from EEPROM: Key");
     Serial.print(key);
     Serial.print(": ");
     Serial.println(action);
@@ -185,9 +200,34 @@ void readEEPROM()
     eepromAddress += sizeof(keyAction[i]);
     key++;
   }
+
+  volatile int nencoder = 0;
+  String strValue;
+  String strAction;
+
+  /*Serial.println("Read from EEPROM: Encoder");
+  for (byte i = 0; i < 3; i++)
+  {
+    EEPROM.get(eepromAddress, strAction);
+
+    Serial.print(eepromAddress);
+    Serial.print(":");
+    Serial.print(strAction);
+
+    eepromAddress += sizeof(encoderAction[i]);
+    EEPROM.get(eepromAddress, strValue);
+    eepromAddress += sizeof(encoderValue[i]);
+
+    encoderAction[i] = strAction;
+    encoderValue[i] = strValue;
+    Serial.print(strAction);
+    Serial.print(": ");
+    Serial.println(strValue);
+    nencoder++;
+  }*/
 }
 
-int getAction(String action)
+/*int getAction(String action)
 {
   for (byte i = 0; i < sizeof(strAction); i++)
   {
@@ -201,6 +241,7 @@ int getAction(String action)
   }
   return 0;
 }
+*/
 
 /*void setText(String txt, unsigned short size = 1, GFXfont *f = &FreeSans9pt7b, int x = 0, int y = 0, bool color = 1)
 {
@@ -223,7 +264,7 @@ void scrollText()
   display.setTextColor(WHITE);
   display.setTextWrap(false);
 
-  int y = 0;
+  unsigned int y = 0;
   if (y < 6 * screenTxt.length() + 6)
   {
     display.fillRect(0, 9, 128, 25, BLACK);
@@ -234,46 +275,60 @@ void scrollText()
       xTxt = display.width();
     y++;
   }
-  display.clearDisplay();
   display.display();
 }
 
 void setup()
 {
-
   Serial.begin(9600);
+  Serial.println("Start");
+
+  Serial.println("PinMode:");
   //Keys
-  for (int i = 0; i < sizeof(keysPins) / sizeof(int *); i++)
+  for (byte i = 0; i < sizeof(keysPins) / sizeof(int *); i++)
   {
     pinMode(keysPins[i], INPUT);
+    Serial.print("Key:");
+    Serial.println(keysPins[i]);
   }
 
   //Encoders
-  for (int i = 0; i < sizeof(encodersPins) / sizeof(int *); i++)
+  for (byte i = 0; i < 3; i++)
   {
     pinMode(encodersPins[i], INPUT);
+    Serial.print("Encoder:");
+    Serial.println(encodersPins[i]);
   }
 
+  Serial.println("Setup Interrupts");
   //------------Interrupts----------
   attachInterrupt(digitalPinToInterrupt(encoderA0), encoder0, LOW);
   attachInterrupt(digitalPinToInterrupt(encoderA1), encoder1, LOW);
   attachInterrupt(digitalPinToInterrupt(encoderA2), encoder2, LOW);
 
+  Serial.println("Setup HID");
   Consumer.begin(); //Start HID
 
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  Serial.println("Setup Display");
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
+  { // Address 0x3C for 128x32
+    Serial.println(F("SSD1306 allocation failed"));
+    for (;;)
+      ; // Don't proceed, loop forever
+  }
 
+  Serial.println("Read EEPROM");
   readEEPROM();
   delay(1000);
-  Serial.println("Start");
 }
 
-const short repeatDelay = 500;
+const int repeatDelay = 5;
+unsigned int currentMillis;
 
 void loop()
 {
-
-  for (int i = 0; i < sizeof(keysPins) / sizeof(int *); i++)
+  //Check Keys
+  for (byte i = 0; i < sizeof(keysPins) / sizeof(int *); i++)
   {
     if (digitalRead(keysPins[i]))
     {
@@ -281,10 +336,10 @@ void loop()
       Serial.print(i);
       Serial.println(" Pressed");
       Consumer.write(keyAction[i]);
-      int currentMillis = millis();
+      currentMillis = millis() / 100;
       while (digitalRead(keysPins[i]))
       {
-        if (currentMillis + repeatDelay <= millis())
+        if (currentMillis + repeatDelay <= millis() / 100)
         {
           Consumer.write(keyAction[i]);
           delay(50);
@@ -293,19 +348,23 @@ void loop()
     }
   }
 
-  for (int i = 0; i < sizeof(encodersPosition) / sizeof(int *); i++)
+  //Check Encoders
+  for (byte i = 0; i < sizeof(encodersPosition) / sizeof(int *); i++)
   {
     if (encodersPosition[i] != encodersLastValue[i])
     {
-      if (encodersPosition[i] > encodersLastValue[i])
+      if (encodersPosition[i] < encodersLastValue[i])
       {
         Serial.print("Encoder");
         Serial.print(i);
         Serial.println(":UP");
+
+        Serial.println(encoderAction[i]);
+        Serial.println(encoderValue[i]);
+
         if (encoderAction[i] == "system" && encoderValue[i] == "volume")
         {
           Consumer.write(MEDIA_VOL_UP);
-          
         }
       }
       else
@@ -343,11 +402,11 @@ void loop()
       if (arg2 == "action")
       {
         int key = arg1.toInt();
-        keyAction[key] = getAction(arg3);
+        keyAction[key] = arg3.toInt();
       }
       else if (arg2 == "combination")
       {
-        short numberOfKey = getNumberArgs(serialMsg, ' ') - 3;
+        //short numberOfKey = getNumberArgs(serialMsg, ' ') - 3;
         int key = getArgs(serialMsg, ' ', 2).toInt();
         serialMsg.remove(0, 22);
 
@@ -361,11 +420,11 @@ void loop()
       {
         int encoder = arg1.toInt();
         encoderAction[encoder] = arg2;
+        delay(10);
         encoderValue[encoder] = arg3;
         Serial.println("OK");
       }
     }
-
     else if (command == "set-text")
     {
       if (arg1 == "text")
