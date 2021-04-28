@@ -227,21 +227,6 @@ void readEEPROM()
   }*/
 }
 
-/*int getAction(String action)
-{
-  for (byte i = 0; i < sizeof(strAction); i++)
-  {
-    if (action == strAction[i])
-    {
-      Serial.print("Found: ");
-      Serial.println(i);
-      return hexAction[i];
-      break;
-    }
-  }
-  return 0;
-}
-*/
 
 /*void setText(String txt, unsigned short size = 1, GFXfont *f = &FreeSans9pt7b, int x = 0, int y = 0, bool color = 1)
 {
