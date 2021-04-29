@@ -13,6 +13,13 @@
 #define FONT Adafruit5x7
 
 bool textScrolling = 0;
+
+//List of action
+/*const String strAction[17] PROGMEM = {"MediaFastForward", "MediaRewind", "MediaNext", "MediaPrevious", "MediaStop", "MediaPlayPause",
+                      "MediaVolumeMute", "MediaVolumeUP", "MediaVolumeDOWN",
+                      "ConsumerEmailReader", "ConsumerCalculator", "ConsumerExplorer",
+                      "ConsumerBrowserHome", "ConsumerBrowserBack", "ConsumerBrowserForward", "ConsumerBrowserRefresh", "ConsumerBrowserBookmarks"};
+*/
 //List of actions in Hex
 const short hexAction[17] PROGMEM = {0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xCD,
                                      0xE2, 0xE9, 0xEA,
@@ -22,8 +29,13 @@ const short hexAction[17] PROGMEM = {0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xCD,
 //List of key current action
 int keyAction[6] = {0, 0, 0, 0, 0, 0};
 
-String encoderAction[] = {"", "", ""};
-String encoderValue[] = {"", "", ""};
+struct ENCODER
+{
+  byte mode;
+  byte value[5];
+};
+
+ENCODER encoderConfig;
 
 volatile int encodersPosition[3] = {50, 50, 50};
 int encodersLastValue[3] = {50, 50, 50};
@@ -181,7 +193,6 @@ void saveToEEPROM()
 
 void readEEPROM()
 {
-
   volatile byte key = 0;
   volatile short eepromAddress = 0;
   volatile short action;
@@ -262,7 +273,7 @@ void centerText(String text)
   textScrolling = false;
 }
 
-setRGB(int r, int g, int b)
+void setRGB(int r, int g, int b)
 {
   analogWrite(ledR, r);
   analogWrite(ledG, g);
@@ -336,7 +347,7 @@ void loop()
   {
     if (digitalRead(keysPins[i]))
     {
-      Serial.print("Key ");
+      Serial.print("Key");
       Serial.println(i);
       Consumer.write(keyAction[i]);
       currentMillis = millis() / 100;
@@ -361,11 +372,7 @@ void loop()
         Serial.print("Encoder");
         Serial.print(i);
         Serial.println(":UP");
-
-        Serial.println(encoderAction[i]);
-        Serial.println(encoderValue[i]);
-
-        if (encoderAction[i] == "system" && encoderValue[i] == "volume")
+        if (encoderAction[i] == "sys" && encoderValue[i] == "vol")
         {
           Consumer.write(MEDIA_VOL_UP);
         }
@@ -376,7 +383,7 @@ void loop()
         Serial.print(i);
         Serial.println(":DOWN");
 
-        if (encoderAction[i] == "system" && encoderValue[i] == "volume")
+        if (encoderAction[i] == "sys" && encoderValue[i] == "vol")
         {
           Consumer.write(MEDIA_VOL_DOWN);
         }
@@ -396,11 +403,13 @@ void loop()
     }
 
     String command = getArgs(serialMsg, ' ', 0);
-    String arg1 = getArgs(serialMsg, ' ', 1);
-    String arg2 = getArgs(serialMsg, ' ', 2);
-    String arg3 = getArgs(serialMsg, ' ', 3);
-    String arg4 = getArgs(serialMsg, ' ', 4);
-    if (command == "set-key")
+    byte arg[5];
+    for (byte i = 1; i < 5; i++)
+    {
+      arg[i] = getArgs(serialMsg, ' ', i).toInt();
+    }
+
+    /*if (command == "set-key")
     {
       if (arg2 == "action")
       {
@@ -417,14 +426,16 @@ void loop()
       }
     }
 
-    else if (command == "set-encoder")
+    else */
+    if (command == "set-encoder")
     {
-      if (arg2 == "system")
+      if (arg[1] == 0) //Action
       {
-        int encoder = arg1.toInt();
-        encoderAction[encoder] = arg2;
-        delay(10);
-        encoderValue[encoder] = arg3;
+        encoderConfig.mode = arg[2];
+        for (byte i = 1; i < 3; i++)
+        {
+          encoderConfig.value[i] = arg[i];
+        }
         Serial.println("OK");
       }
     }
@@ -475,7 +486,8 @@ void loop()
       Serial.println("OK");
     }
 
-    else{
+    else
+    {
       Serial.print(command);
       Serial.println(": command not found");
     }
