@@ -6,21 +6,18 @@
 #include <EEPROM.h>
 
 #include <Wire.h>
-#include <Adafruit_SSD1306.h>
-#include <Fonts/FreeSans9pt7b.h>
+#include <SSD1306Ascii.h>
+#include <SSD1306AsciiAvrI2c.h>
 
-//List of action
-/*const String strAction[17] PROGMEM = {"MediaFastForward", "MediaRewind", "MediaNext", "MediaPrevious", "MediaStop", "MediaPlayPause",
-                      "MediaVolumeMute", "MediaVolumeUP", "MediaVolumeDOWN",
-                      "ConsumerEmailReader", "ConsumerCalculator", "ConsumerExplorer",
-                      "ConsumerBrowserHome", "ConsumerBrowserBack", "ConsumerBrowserForward", "ConsumerBrowserRefresh", "ConsumerBrowserBookmarks"};
-*/
+#define FONT2 Cooper19
+#define FONT Adafruit5x7
 
+bool textScrolling = 0;
 //List of actions in Hex
 const short hexAction[17] PROGMEM = {0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xCD,
-                     0xE2, 0xE9, 0xEA,
-                     0x18A, 0x192, 0x194,
-                     0x223, 0x224, 0x225, 0x227, 0x22A};
+                                     0xE2, 0xE9, 0xEA,
+                                     0x18A, 0x192, 0x194,
+                                     0x223, 0x224, 0x225, 0x227, 0x22A};
 
 //List of key current action
 int keyAction[6] = {0, 0, 0, 0, 0, 0};
@@ -33,11 +30,12 @@ int encodersLastValue[3] = {50, 50, 50};
 
 String serialMsg;
 
-const int keysPins[6] = {key0, key1, key2, key3, key4, key5};
+const int keysPins[6] = {key0Pin, key1Pin, key2Pin, key3Pin, key4Pin, key5Pin};
 
-const int encodersPins[9] = {encoderA0, encoderB0, encoderKey0, encoderA1, encoderB1, encoderKey1, encoderA2, encoderB2, encoderKey2};
+const int encodersPins[9] = {encoderA0Pin, encoderB0Pin, encoderKey0Pin, encoderA1Pin, encoderB1Pin, encoderKey1Pin, encoderA2Pin, encoderB2Pin, encoderKey2Pin};
 
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+SSD1306AsciiAvrI2c oled;
+TickerState state;
 
 String getArgs(String data, char separator, int index)
 {
@@ -227,46 +225,55 @@ void readEEPROM()
   }*/
 }
 
-
-/*void setText(String txt, unsigned short size = 1, GFXfont *f = &FreeSans9pt7b, int x = 0, int y = 0, bool color = 1)
-{
-  display.setTextSize(size);
-  display.setTextColor(color);
-  display.setFont(f);
-  display.setCursor(x, y);
-  display.print(txt);
-  display.display();
-}*/
-
 String screenTxt = "MacroPad";
-int xTxt = display.width();
-int xMin = -11 * screenTxt.length();
 
+uint32_t tickTime = 0;
 void scrollText()
 {
-  display.setTextSize(1);
-  display.setFont(&FreeSans9pt7b);
-  display.setTextColor(WHITE);
-  display.setTextWrap(false);
-
-  unsigned int y = 0;
-  if (y < 6 * screenTxt.length() + 6)
+  if (tickTime <= millis())
   {
-    display.fillRect(0, 9, 128, 25, BLACK);
-    display.setCursor(xTxt, 23);
-    display.print(screenTxt);
-    xTxt--;
-    if (xTxt < xMin)
-      xTxt = display.width();
-    y++;
+    tickTime = millis() + 30;
+
+    if (textScrolling)
+    {
+      int8_t rtn = oled.tickerTick(&state);
+
+      if (rtn <= 0)
+      {
+        oled.tickerText(&state, screenTxt);
+      }
+    }
   }
-  display.display();
+}
+
+void centerText(String text)
+{
+  int str_len = text.length();
+  char char_array[str_len];
+  text.toCharArray(char_array, str_len);
+  size_t size = oled.strWidth(char_array);
+
+  oled.clear();
+  oled.setFont(FONT);
+  oled.set2X();
+
+  oled.setCursor((oled.displayWidth() - size) / 2, ((oled.displayRows() / 2) - 2)); //Center
+  oled.println(screenTxt);
+  textScrolling = false;
+}
+
+setRGB(int r, int g, int b)
+{
+  analogWrite(ledR, r);
+  analogWrite(ledG, g);
+  analogWrite(ledB, b);
 }
 
 void setup()
 {
   Serial.begin(9600);
   Serial.println("Start");
+  setRGB(255, 0, 0);
 
   Serial.println("PinMode:");
   //Keys
@@ -285,26 +292,38 @@ void setup()
     Serial.println(encodersPins[i]);
   }
 
+  pinMode(ledR, OUTPUT);
+  pinMode(ledG, OUTPUT);
+  pinMode(ledB, OUTPUT);
+
+  delay(1000);
+
+  setRGB(0, 255, 0);
+
   Serial.println("Setup Interrupts");
   //------------Interrupts----------
-  attachInterrupt(digitalPinToInterrupt(encoderA0), encoder0, LOW);
-  attachInterrupt(digitalPinToInterrupt(encoderA1), encoder1, LOW);
-  attachInterrupt(digitalPinToInterrupt(encoderA2), encoder2, LOW);
+  attachInterrupt(digitalPinToInterrupt(encoderA0Pin), encoder0, LOW);
+  attachInterrupt(digitalPinToInterrupt(encoderA1Pin), encoder1, LOW);
+  attachInterrupt(digitalPinToInterrupt(encoderA2Pin), encoder2, LOW);
 
   Serial.println("Setup HID");
   Consumer.begin(); //Start HID
 
   Serial.println("Setup Display");
-  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
-  { // Address 0x3C for 128x32
-    Serial.println(F("SSD1306 allocation failed"));
-    for (;;)
-      ; // Don't proceed, loop forever
-  }
+
+  Wire.begin();
+  oled.begin(&Adafruit128x32, 0x3C);
 
   Serial.println("Read EEPROM");
   readEEPROM();
+
   delay(1000);
+  setRGB(0, 0, 255);
+
+  centerText("Macropad");
+  centerText("Macropad");
+  delay(1000);
+  setRGB(0, 0, 0);
 }
 
 const int repeatDelay = 5;
@@ -318,8 +337,7 @@ void loop()
     if (digitalRead(keysPins[i]))
     {
       Serial.print("Key ");
-      Serial.print(i);
-      Serial.println(" Pressed");
+      Serial.println(i);
       Consumer.write(keyAction[i]);
       currentMillis = millis() / 100;
       while (digitalRead(keysPins[i]))
@@ -418,8 +436,23 @@ void loop()
         txt.remove(txt.length() - 1);
         Serial.println(txt);
         screenTxt = txt;
-        xTxt = display.width();
-        xMin = -11 * screenTxt.length();
+
+        int str_len = screenTxt.length();
+        char char_array[str_len];
+        screenTxt.toCharArray(char_array, str_len);
+        size_t size = oled.strWidth(char_array);
+
+        if (size > 128)
+        {
+          oled.clear();
+          oled.tickerInit(&state, FONT, 1, true, 0, oled.displayWidth());
+          textScrolling = true;
+        }
+        else
+        {
+          centerText(screenTxt);
+          textScrolling = false;
+        }
       }
     }
 
@@ -434,6 +467,17 @@ void loop()
     else if (command == "read-config")
     {
       readEEPROM();
+    }
+
+    else if (command == "set-rgb")
+    {
+      setRGB(arg1.toInt(), arg2.toInt(), arg3.toInt());
+      Serial.println("OK");
+    }
+
+    else{
+      Serial.print(command);
+      Serial.println(": command not found");
     }
   }
 
