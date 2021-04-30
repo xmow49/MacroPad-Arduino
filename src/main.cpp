@@ -29,13 +29,13 @@ const short hexAction[17] PROGMEM = {0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xCD,
 //List of key current action
 int keyAction[6] = {0, 0, 0, 0, 0, 0};
 
-struct ENCODER
+struct EncoderConf
 {
   byte mode;
-  byte value[5];
+  byte value[3];
 };
 
-ENCODER encoderConfig;
+EncoderConf encoderConfig[3];
 
 volatile int encodersPosition[3] = {50, 50, 50};
 int encodersLastValue[3] = {50, 50, 50};
@@ -176,18 +176,18 @@ void saveToEEPROM()
     key++;
   }
 
-  for (byte i = 0; i < sizeof(encoderAction) / sizeof(encoderAction[i]); i++)
+  for (byte i = 0; i < 3; i++)
   {
     Serial.print("Save to EEPROM: Encoder");
-    Serial.print(encoderAction[i]);
+    Serial.print(encoderConfig[i].mode);
     Serial.print(": ");
-    Serial.println(encoderValue[i]);
+    Serial.println(encoderConfig[i].value[0]);
 
-    EEPROM.put(eepromAddress, encoderAction[i]);
-    eepromAddress += sizeof(encoderAction[i]);
+    EEPROM.put(eepromAddress, encoderConfig[i].mode);
+    eepromAddress += sizeof(encoderConfig[i].mode);
 
-    EEPROM.put(eepromAddress, encoderValue[i]);
-    eepromAddress += sizeof(encoderValue[i]);
+    EEPROM.put(eepromAddress, encoderConfig[i].value[0]);
+    eepromAddress += sizeof(encoderConfig[i].value[0]);
   }
 }
 
@@ -307,6 +307,14 @@ void setup()
   pinMode(ledG, OUTPUT);
   pinMode(ledB, OUTPUT);
 
+  encoderConfig->mode = 255;
+  for (byte i = 0; i < 3; i++)
+  {
+    encoderConfig->value[i] = 255;
+  }
+  
+  
+
   delay(1000);
 
   setRGB(0, 255, 0);
@@ -372,7 +380,7 @@ void loop()
         Serial.print("Encoder");
         Serial.print(i);
         Serial.println(":UP");
-        if (encoderAction[i] == "sys" && encoderValue[i] == "vol")
+        if (encoderConfig[i].mode == 0 && encoderConfig[i].value[0] == 0) //Master Volume
         {
           Consumer.write(MEDIA_VOL_UP);
         }
@@ -383,7 +391,7 @@ void loop()
         Serial.print(i);
         Serial.println(":DOWN");
 
-        if (encoderAction[i] == "sys" && encoderValue[i] == "vol")
+        if (encoderConfig[i].mode == 0 && encoderConfig[i].value[0] == 0)
         {
           Consumer.write(MEDIA_VOL_DOWN);
         }
@@ -404,10 +412,14 @@ void loop()
 
     String command = getArgs(serialMsg, ' ', 0);
     byte arg[5];
-    for (byte i = 1; i < 5; i++)
+    for (byte i = 0; i < 5; i++)
     {
-      arg[i] = getArgs(serialMsg, ' ', i).toInt();
+      arg[i] = getArgs(serialMsg, ' ', i + 1).toInt();
     }
+    Serial.println(arg[0]);
+    Serial.println(arg[1]);
+    Serial.println(arg[2]);
+    Serial.println(arg[3]);
 
     /*if (command == "set-key")
     {
@@ -429,47 +441,56 @@ void loop()
     else */
     if (command == "set-encoder")
     {
+
       if (arg[1] == 0) //Action
       {
-        encoderConfig.mode = arg[2];
+        encoderConfig[arg[0]].mode = arg[2];
         for (byte i = 1; i < 3; i++)
         {
-          encoderConfig.value[i] = arg[i];
+          encoderConfig[arg[0]].value[i] = arg[i];
         }
         Serial.println("OK");
       }
     }
     else if (command == "set-text")
     {
-      if (arg1 == "text")
+      String txt = getArgs(serialMsg, '"', 1);
+      txt.remove(txt.length() - 1);
+      Serial.println(txt);
+      screenTxt = txt;
+
+      int str_len = screenTxt.length();
+      char char_array[str_len];
+      screenTxt.toCharArray(char_array, str_len);
+      size_t size = oled.strWidth(char_array);
+
+      if (size > 128)
       {
-        String txt = getArgs(serialMsg, '"', 1);
-        txt.remove(txt.length() - 1);
-        Serial.println(txt);
-        screenTxt = txt;
-
-        int str_len = screenTxt.length();
-        char char_array[str_len];
-        screenTxt.toCharArray(char_array, str_len);
-        size_t size = oled.strWidth(char_array);
-
-        if (size > 128)
-        {
-          oled.clear();
-          oled.tickerInit(&state, FONT, 1, true, 0, oled.displayWidth());
-          textScrolling = true;
-        }
-        else
-        {
-          centerText(screenTxt);
-          textScrolling = false;
-        }
+        oled.clear();
+        oled.tickerInit(&state, FONT, 1, true, 0, oled.displayWidth());
+        textScrolling = true;
+      }
+      else
+      {
+        centerText(screenTxt);
+        textScrolling = false;
       }
     }
 
     else if (command == "get-config")
     {
       getstrAction();
+
+      for (byte i = 0; i < 3; i++)
+      {
+        Serial.print("Encoder");
+        Serial.print(i);
+        Serial.print(" ");
+        Serial.print(encoderConfig->mode);
+        Serial.print(":");
+        Serial.println(encoderConfig->value[0]);
+      }
+      
     }
     else if (command == "save-config")
     {
@@ -482,7 +503,7 @@ void loop()
 
     else if (command == "set-rgb")
     {
-      setRGB(arg1.toInt(), arg2.toInt(), arg3.toInt());
+      setRGB(arg[1], arg[2], arg[3]);
       Serial.println("OK");
     }
 

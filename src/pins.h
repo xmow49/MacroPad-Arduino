@@ -1,29 +1,27 @@
 //------LEDs-------
-const int ledR = 10;
-const int ledG = 9;
-const int ledB = 5;
+const byte ledR = 10;
+const byte ledG = 9;
+const byte ledB = 5;
 
 //------Keys-------
-#define key0Pin 8
-#define key1Pin 6
-#define key2Pin 12
-#define key3Pin 4
-#define key4Pin 13
-#define key5Pin 11
-
+const byte key0Pin = 8;
+const byte key1Pin = 6;
+const byte key2Pin = 12;
+const byte key3Pin = 4;
+const byte key4Pin = 13;
+const byte key5Pin = 11;
 //------Encoder-------
-#define encoderA0Pin    7
-#define encoderB0Pin    A2
-#define encoderKey0Pin  A5
+const byte encoderA0Pin = 7;
+const byte encoderB0Pin = A2;
+const byte encoderKey0Pin = A5;
 
-#define encoderA1Pin    1
-#define encoderB1Pin    A1
-#define encoderKey1Pin  A4
+const byte encoderA1Pin = 1;
+const byte encoderB1Pin = A1;
+const byte encoderKey1Pin = A4;
 
-#define encoderA2Pin    0
-#define encoderB2Pin    A0
-#define encoderKey2Pin  A3
+const byte encoderA2Pin = 0;
+const byte encoderB2Pin = A0;
+const byte encoderKey2Pin = A3;
 //------------------------
-
-const int SCREEN_WIDTH = 128;
-const int SCREEN_HEIGHT = 32;
+const byte SCREEN_WIDTH = 128;
+const byte SCREEN_HEIGHT = 32;
