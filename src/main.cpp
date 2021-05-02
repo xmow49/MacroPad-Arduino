@@ -143,77 +143,123 @@ void encoder2()
 void saveToEEPROM()
 {
   Serial.println("-----Save to EEPROM-----");
-  volatile int key = 0;
+
   volatile short eepromAddress = 0;
-  /*for (byte i = 0; i < sizeof(keyAction) / sizeof(int *); i++)
+  for (byte i = 0; i < 6; i++)
   {
-    Serial.print("Save to EEPROM: Key");
-    Serial.print(key);
-    Serial.print(": ");
-    Serial.println(keyAction[i]);
-    EEPROM.put(eepromAddress, keyAction[i]);
-    eepromAddress += sizeof(keyAction[i]);
-    key++;
-  }*/
+    Serial.print("Key");
+    Serial.print(i);
+    Serial.print(" ");
+
+    Serial.print(keyConf[i].mode);
+    EEPROM.put(eepromAddress, keyConf[i].mode);
+    eepromAddress += sizeof(keyConf[i].mode);
+
+    Serial.print(":");
+    Serial.print(keyConf[i].value[0]);
+    EEPROM.put(eepromAddress, keyConf[i].value[0]);
+    eepromAddress += sizeof(keyConf[i].value[0]);
+
+    Serial.print(",");
+    Serial.print(keyConf[i].value[1]);
+    EEPROM.put(eepromAddress, keyConf[i].value[1]);
+    eepromAddress += sizeof(keyConf[i].value[1]);
+
+    Serial.print(",");
+    Serial.println(keyConf[i].value[2]);
+    EEPROM.put(eepromAddress, keyConf[i].value[2]);
+    eepromAddress += sizeof(keyConf[i].value[2]);
+  }
 
   for (byte i = 0; i < 3; i++)
   {
-    Serial.print("Save to EEPROM: Encoder");
-    Serial.print(encoderConfig[i].mode);
-    Serial.print(": ");
-    Serial.println(encoderConfig[i].value[0]);
+    Serial.print("Encoder");
+    Serial.print(i);
+    Serial.print(" ");
 
+    //Save Mode
+    Serial.print(encoderConfig[i].mode);
     EEPROM.put(eepromAddress, encoderConfig[i].mode);
     eepromAddress += sizeof(encoderConfig[i].mode);
 
+    //Save value 1
+    Serial.print(":");
+    Serial.print(encoderConfig[i].value[0]);
     EEPROM.put(eepromAddress, encoderConfig[i].value[0]);
     eepromAddress += sizeof(encoderConfig[i].value[0]);
+
+    //Save value 2
+    Serial.print(",");
+    Serial.print(encoderConfig[i].value[1]);
+    EEPROM.put(eepromAddress, encoderConfig[i].value[1]);
+    eepromAddress += sizeof(encoderConfig[i].value[1]);
+
+    //Save value 3
+    Serial.print(",");
+    Serial.println(encoderConfig[i].value[2]);
+    EEPROM.put(eepromAddress, encoderConfig[i].value[2]);
+    eepromAddress += sizeof(encoderConfig[i].value[2]);
   }
 }
 
 void readEEPROM()
 {
-  volatile byte key = 0;
+  Serial.println("-----Read from EEPROM-----");
   volatile short eepromAddress = 0;
-  volatile short action;
-  /*int sizeKeyAction = sizeof(keyAction) / sizeof(int *);
-
-  Serial.println("Read from EEPROM: Key");
-  for (byte i = 0; i < sizeKeyAction; i++)
+  for (byte i = 0; i < 6; i++)
   {
-    EEPROM.get(eepromAddress, action);
-    Serial.print(key);
-    Serial.print(": ");
-    Serial.println(action);
-    keyAction[i] = action;
-    eepromAddress += sizeof(keyAction[i]);
-    key++;
-  }*/
+    Serial.print("Key");
+    Serial.print(i);
+    Serial.print(" ");
 
-  volatile int nencoder = 0;
-  String strValue;
-  String strAction;
+    EEPROM.get(eepromAddress, keyConf[i].mode);
+    Serial.print(keyConf[i].mode);
+    eepromAddress += sizeof(keyConf[i].mode);
 
-  /*Serial.println("Read from EEPROM: Encoder");
+    Serial.print(":");
+    EEPROM.get(eepromAddress, keyConf[i].value[0]);
+    Serial.print(keyConf[i].value[0]);
+    eepromAddress += sizeof(keyConf[i].value[0]);
+
+    Serial.print(",");
+    EEPROM.get(eepromAddress, keyConf[i].value[1]);
+    Serial.print(keyConf[i].value[1]);
+    eepromAddress += sizeof(keyConf[i].value[1]);
+
+    Serial.print(",");
+    EEPROM.get(eepromAddress, keyConf[i].value[2]);
+    Serial.println(keyConf[i].value[2]);
+    eepromAddress += sizeof(keyConf[i].value[2]);
+  }
   for (byte i = 0; i < 3; i++)
   {
-    EEPROM.get(eepromAddress, strAction);
+    Serial.print("Encoder");
+    Serial.print(i);
+    Serial.print(" ");
 
-    Serial.print(eepromAddress);
+    //Get Mode
+    EEPROM.get(eepromAddress, encoderConfig[i].mode);
+    Serial.print(encoderConfig[i].mode);
+    eepromAddress += sizeof(encoderConfig[i].mode);
+
+    //Get Value 1
     Serial.print(":");
-    Serial.print(strAction);
+    EEPROM.get(eepromAddress, encoderConfig[i].value[0]);
+    Serial.print(encoderConfig[i].value[0]);
+    eepromAddress += sizeof(encoderConfig[i].value[0]);
 
-    eepromAddress += sizeof(encoderAction[i]);
-    EEPROM.get(eepromAddress, strValue);
-    eepromAddress += sizeof(encoderValue[i]);
+    //Get Value 2
+    Serial.print(":");
+    EEPROM.get(eepromAddress, encoderConfig[i].value[1]);
+    Serial.print(encoderConfig[i].value[1]);
+    eepromAddress += sizeof(encoderConfig[i].value[1]);
 
-    encoderAction[i] = strAction;
-    encoderValue[i] = strValue;
-    Serial.print(strAction);
-    Serial.print(": ");
-    Serial.println(strValue);
-    nencoder++;
-  }*/
+    //Get Value 3
+    Serial.print(":");
+    EEPROM.get(eepromAddress, encoderConfig[i].value[3]);
+    Serial.print(encoderConfig[i].value[3]);
+    eepromAddress += sizeof(encoderConfig[i].value[3]);
+  }
 }
 
 String screenTxt = "MacroPad";
@@ -287,7 +333,6 @@ void setup()
   pinMode(ledG, OUTPUT);
   pinMode(ledB, OUTPUT);
 
-  encoderConfig->mode = 255;
   for (byte i = 0; i < 3; i++)
   {
     encoderConfig->value[i] = 255;
@@ -361,6 +406,7 @@ void loop()
         Serial.print("Encoder");
         Serial.print(i);
         Serial.println(":UP");
+
         if (encoderConfig[i].mode == 0 && encoderConfig[i].value[0] == 0) //Master Volume
         {
           Consumer.write(MEDIA_VOL_UP);
@@ -397,10 +443,12 @@ void loop()
     {
       arg[i] = getArgs(serialMsg, ' ', i + 1).toInt();
     }
-    Serial.println(arg[0]); //n encoder/key
+    /*Serial.println(arg[0]); //n encoder/key
     Serial.println(arg[1]); //mode
     Serial.println(arg[2]); //Value 1
     Serial.println(arg[3]); //Value 2
+    Serial.println(arg[4]); //Value 3
+    */
 
     if (command == "set-key")
     {
@@ -414,9 +462,9 @@ void loop()
       if (arg[1] == 0) //Action
       {
         encoderConfig[arg[0]].mode = arg[1];
-        for (byte i = 1; i < 3; i++)
+        for (byte i = 0; i < 3; i++)
         {
-          encoderConfig[arg[0]].value[i] = arg[i];
+          encoderConfig[arg[0]].value[i] = arg[i + 2];
         }
         Serial.println("OK");
       }
@@ -448,7 +496,6 @@ void loop()
 
     else if (command == "get-config")
     {
-
       for (byte i = 0; i < 6; i++)
       {
         Serial.print("Key");
