@@ -454,6 +454,7 @@ void loop()
       screenTxt.toCharArray(char_array, str_len);
       size_t size = oled.strWidth(char_array);
 
+      size = 150;
       if (size > 128)
       {
         oled.clear();
