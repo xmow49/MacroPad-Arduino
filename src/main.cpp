@@ -13,15 +13,14 @@
 #define FONT Adafruit5x7
 
 bool textScrolling = 0;
-
 //List of action
 /*const String strAction[17] PROGMEM = {"MediaFastForward", "MediaRewind", "MediaNext", "MediaPrevious", "MediaStop", "MediaPlayPause",
                       "MediaVolumeMute", "MediaVolumeUP", "MediaVolumeDOWN",
                       "ConsumerEmailReader", "ConsumerCalculator", "ConsumerExplorer",
                       "ConsumerBrowserHome", "ConsumerBrowserBack", "ConsumerBrowserForward", "ConsumerBrowserRefresh", "ConsumerBrowserBookmarks"};
-*/
+
 //List of actions in Hex
-/*const short hexAction[17] PROGMEM = {0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xCD,
+const short hexAction[17] PROGMEM = {0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xCD,
                                      0xE2, 0xE9, 0xEA,
                                      0x18A, 0x192, 0x194,
                                      0x223, 0x224, 0x225, 0x227, 0x22A};
@@ -49,7 +48,6 @@ int encodersLastValue[3] = {50, 50, 50};
 String serialMsg;
 
 const byte keysPins[6] = {key0Pin, key1Pin, key2Pin, key3Pin, key4Pin, key5Pin};
-
 const byte encodersPins[9] = {encoderA0Pin, encoderB0Pin, encoderKey0Pin, encoderA1Pin, encoderB1Pin, encoderKey1Pin, encoderA2Pin, encoderB2Pin, encoderKey2Pin};
 
 SSD1306AsciiAvrI2c oled;
@@ -75,26 +73,12 @@ String getArgs(String data, char separator, int index)
   return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
-short getNumberArgs(String data, char separator)
-{
-  int nArgs = 0;
-  int maxIndex = data.length() - 1;
-  for (int i = 0; i <= maxIndex; i++)
-  {
-    if (data.charAt(i) == separator)
-    {
-      nArgs++;
-    }
-  }
-  return nArgs;
-}
-
 void encoder(byte encoder)
 {
   static unsigned long lastInterruptTime = 0;
   unsigned long interruptTime = millis();
 
-  volatile int pin;
+  volatile byte pin;
   switch (encoder)
   {
   case 0:
@@ -299,7 +283,7 @@ void centerText(String text)
   textScrolling = false;
 }
 
-void setRGB(int r, int g, int b)
+void setRGB(byte r, byte g, byte b)
 {
   analogWrite(ledR, r);
   analogWrite(ledG, g);
@@ -314,13 +298,12 @@ void setup()
 
   Serial.println("PinMode:");
   //Keys
-  for (byte i = 0; i < sizeof(keysPins) / sizeof(int *); i++)
+  for (byte i = 0; i < 6; i++)
   {
     pinMode(keysPins[i], INPUT);
     Serial.print("Key:");
     Serial.println(keysPins[i]);
   }
-
   //Encoders
   for (byte i = 0; i < 3; i++)
   {
@@ -328,15 +311,9 @@ void setup()
     Serial.print("Encoder:");
     Serial.println(encodersPins[i]);
   }
-
   pinMode(ledR, OUTPUT);
   pinMode(ledG, OUTPUT);
   pinMode(ledB, OUTPUT);
-
-  for (byte i = 0; i < 3; i++)
-  {
-    encoderConfig->value[i] = 255;
-  }
 
   delay(1000);
 
@@ -368,8 +345,8 @@ void setup()
   setRGB(0, 0, 0);
 }
 
-const int repeatDelay = 5;
-unsigned int currentMillis;
+const byte repeatDelay = 5;
+unsigned long currentMillis;
 
 void loop()
 {
@@ -397,7 +374,7 @@ void loop()
   }
 
   //Check Encoders
-  for (byte i = 0; i < sizeof(encodersPosition) / sizeof(int *); i++)
+  for (byte i = 0; i < 3; i++)
   {
     if (encodersPosition[i] != encodersLastValue[i])
     {
@@ -443,7 +420,8 @@ void loop()
     {
       arg[i] = getArgs(serialMsg, ' ', i + 1).toInt();
     }
-    /*Serial.println(arg[0]); //n encoder/key
+    /*
+    Serial.println(arg[0]); //n encoder/key
     Serial.println(arg[1]); //mode
     Serial.println(arg[2]); //Value 1
     Serial.println(arg[3]); //Value 2
@@ -454,28 +432,23 @@ void loop()
     {
       keyConf[arg[0]].mode = arg[1];     //Save Mode
       keyConf[arg[0]].value[0] = arg[2]; //Save Value 1
+      Serial.println("OK");
     }
 
     else if (command == "set-encoder")
     {
-
-      if (arg[1] == 0) //Action
+      encoderConfig[arg[0]].mode = arg[1];
+      for (byte i = 0; i < 3; i++)
       {
-        encoderConfig[arg[0]].mode = arg[1];
-        for (byte i = 0; i < 3; i++)
-        {
-          encoderConfig[arg[0]].value[i] = arg[i + 2];
-        }
-        Serial.println("OK");
+        encoderConfig[arg[0]].value[i] = arg[i + 2];
       }
+      Serial.println("OK");
     }
     else if (command == "set-text")
     {
       String txt = getArgs(serialMsg, '"', 1);
       txt.remove(txt.length() - 1);
-      Serial.println(txt);
       screenTxt = txt;
-
       int str_len = screenTxt.length();
       char char_array[str_len];
       screenTxt.toCharArray(char_array, str_len);
@@ -492,6 +465,8 @@ void loop()
         centerText(screenTxt);
         textScrolling = false;
       }
+
+      Serial.println("OK");
     }
 
     else if (command == "get-config")
