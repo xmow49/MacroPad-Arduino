@@ -21,13 +21,12 @@ bool textScrolling = 0;
                       "ConsumerBrowserHome", "ConsumerBrowserBack", "ConsumerBrowserForward", "ConsumerBrowserRefresh", "ConsumerBrowserBookmarks"};
 */
 //List of actions in Hex
-const short hexAction[17] PROGMEM = {0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xCD,
+/*const short hexAction[17] PROGMEM = {0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xCD,
                                      0xE2, 0xE9, 0xEA,
                                      0x18A, 0x192, 0x194,
                                      0x223, 0x224, 0x225, 0x227, 0x22A};
-
+*/
 //List of key current action
-int keyAction[6] = {0, 0, 0, 0, 0, 0};
 
 struct EncoderConf
 {
@@ -35,16 +34,23 @@ struct EncoderConf
   byte value[3];
 };
 
+struct KeyConf
+{
+  byte mode;
+  byte value[3];
+};
+
 EncoderConf encoderConfig[3];
+KeyConf keyConf[6];
 
 volatile int encodersPosition[3] = {50, 50, 50};
 int encodersLastValue[3] = {50, 50, 50};
 
 String serialMsg;
 
-const int keysPins[6] = {key0Pin, key1Pin, key2Pin, key3Pin, key4Pin, key5Pin};
+const byte keysPins[6] = {key0Pin, key1Pin, key2Pin, key3Pin, key4Pin, key5Pin};
 
-const int encodersPins[9] = {encoderA0Pin, encoderB0Pin, encoderKey0Pin, encoderA1Pin, encoderB1Pin, encoderKey1Pin, encoderA2Pin, encoderB2Pin, encoderKey2Pin};
+const byte encodersPins[9] = {encoderA0Pin, encoderB0Pin, encoderKey0Pin, encoderA1Pin, encoderB1Pin, encoderKey1Pin, encoderA2Pin, encoderB2Pin, encoderKey2Pin};
 
 SSD1306AsciiAvrI2c oled;
 TickerState state;
@@ -134,38 +140,12 @@ void encoder2()
   encoder(2);
 }
 
-void getstrAction()
-{
-  volatile byte key = 0;
-
-  int sizeKeyAction = sizeof(keyAction) / sizeof(int *);
-  int sizeHexAction = sizeof(hexAction) / sizeof(int *);
-  for (byte i = 0; i < sizeKeyAction; i++)
-  {
-    for (byte i = 0; i < sizeKeyAction; i++)
-    {
-      for (byte i = 0; i < sizeHexAction; i++)
-      {
-        if (hexAction[i] == keyAction[key])
-        {
-          Serial.print("Key");
-          Serial.print(key);
-          Serial.print(": ");
-          Serial.println(hexAction[i]);
-          break;
-        }
-      }
-      key++;
-    }
-  }
-}
-
 void saveToEEPROM()
 {
   Serial.println("-----Save to EEPROM-----");
   volatile int key = 0;
   volatile short eepromAddress = 0;
-  for (byte i = 0; i < sizeof(keyAction) / sizeof(int *); i++)
+  /*for (byte i = 0; i < sizeof(keyAction) / sizeof(int *); i++)
   {
     Serial.print("Save to EEPROM: Key");
     Serial.print(key);
@@ -174,7 +154,7 @@ void saveToEEPROM()
     EEPROM.put(eepromAddress, keyAction[i]);
     eepromAddress += sizeof(keyAction[i]);
     key++;
-  }
+  }*/
 
   for (byte i = 0; i < 3; i++)
   {
@@ -196,7 +176,7 @@ void readEEPROM()
   volatile byte key = 0;
   volatile short eepromAddress = 0;
   volatile short action;
-  int sizeKeyAction = sizeof(keyAction) / sizeof(int *);
+  /*int sizeKeyAction = sizeof(keyAction) / sizeof(int *);
 
   Serial.println("Read from EEPROM: Key");
   for (byte i = 0; i < sizeKeyAction; i++)
@@ -208,7 +188,7 @@ void readEEPROM()
     keyAction[i] = action;
     eepromAddress += sizeof(keyAction[i]);
     key++;
-  }
+  }*/
 
   volatile int nencoder = 0;
   String strValue;
@@ -312,8 +292,6 @@ void setup()
   {
     encoderConfig->value[i] = 255;
   }
-  
-  
 
   delay(1000);
 
@@ -351,20 +329,23 @@ unsigned int currentMillis;
 void loop()
 {
   //Check Keys
-  for (byte i = 0; i < sizeof(keysPins) / sizeof(int *); i++)
+  for (byte i = 0; i < 6; i++)
   {
     if (digitalRead(keysPins[i]))
     {
       Serial.print("Key");
       Serial.println(i);
-      Consumer.write(keyAction[i]);
-      currentMillis = millis() / 100;
-      while (digitalRead(keysPins[i]))
+      if (keyConf[i].mode == 1) //System Action
       {
-        if (currentMillis + repeatDelay <= millis() / 100)
+        Consumer.write(keyConf[i].value[0]);
+        currentMillis = millis() / 100;
+        while (digitalRead(keysPins[i]))
         {
-          Consumer.write(keyAction[i]);
-          delay(50);
+          if (currentMillis + repeatDelay <= millis() / 100)
+          {
+            Consumer.write(keyConf[i].value[0]);
+            delay(50);
+          }
         }
       }
     }
@@ -416,35 +397,23 @@ void loop()
     {
       arg[i] = getArgs(serialMsg, ' ', i + 1).toInt();
     }
-    Serial.println(arg[0]);
-    Serial.println(arg[1]);
-    Serial.println(arg[2]);
-    Serial.println(arg[3]);
+    Serial.println(arg[0]); //n encoder/key
+    Serial.println(arg[1]); //mode
+    Serial.println(arg[2]); //Value 1
+    Serial.println(arg[3]); //Value 2
 
-    /*if (command == "set-key")
+    if (command == "set-key")
     {
-      if (arg2 == "action")
-      {
-        int key = arg1.toInt();
-        keyAction[key] = arg3.toInt();
-      }
-      else if (arg2 == "combination")
-      {
-        //short numberOfKey = getNumberArgs(serialMsg, ' ') - 3;
-        int key = getArgs(serialMsg, ' ', 2).toInt();
-        serialMsg.remove(0, 22);
-
-        keyAction[key] = -1;
-      }
+      keyConf[arg[0]].mode = arg[1];     //Save Mode
+      keyConf[arg[0]].value[0] = arg[2]; //Save Value 1
     }
 
-    else */
-    if (command == "set-encoder")
+    else if (command == "set-encoder")
     {
 
       if (arg[1] == 0) //Action
       {
-        encoderConfig[arg[0]].mode = arg[2];
+        encoderConfig[arg[0]].mode = arg[1];
         for (byte i = 1; i < 3; i++)
         {
           encoderConfig[arg[0]].value[i] = arg[i];
@@ -479,18 +448,25 @@ void loop()
 
     else if (command == "get-config")
     {
-      getstrAction();
 
+      for (byte i = 0; i < 6; i++)
+      {
+        Serial.print("Key");
+        Serial.print(i);
+        Serial.print(" ");
+        Serial.print(keyConf[i].mode);
+        Serial.print(":");
+        Serial.println(keyConf[i].value[0]);
+      }
       for (byte i = 0; i < 3; i++)
       {
         Serial.print("Encoder");
         Serial.print(i);
         Serial.print(" ");
-        Serial.print(encoderConfig->mode);
+        Serial.print(encoderConfig[i].mode);
         Serial.print(":");
-        Serial.println(encoderConfig->value[0]);
+        Serial.println(encoderConfig[i].value[0]);
       }
-      
     }
     else if (command == "save-config")
     {
