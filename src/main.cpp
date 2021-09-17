@@ -337,12 +337,11 @@ void setup()
   readEEPROM();
 
   delay(1000);
-  setRGB(0, 0, 255);
+  setRGB(255, 0, 0);
 
   centerText("Macropad");
   centerText("Macropad");
   delay(1000);
-  setRGB(0, 0, 0);
 }
 
 const byte repeatDelay = 5;
@@ -374,22 +373,30 @@ void loop()
   }
 
   //Check Encoders
-  for (byte i = 0; i < 3; i++)
+  for (byte i = 0; i < 3; i++) //For every encoder
   {
-    if (encodersPosition[i] != encodersLastValue[i])
+    if (encodersPosition[i] != encodersLastValue[i]) //If Encoder New Value
     {
-      if (encodersPosition[i] < encodersLastValue[i])
+      if (encodersPosition[i] < encodersLastValue[i]) //Encoder ClockWise Turn
       {
         Serial.print("Encoder");
         Serial.print(i);
         Serial.println(":UP");
 
-        if (encoderConfig[i].mode == 0 && encoderConfig[i].value[0] == 0) //Master Volume
+        if (encoderConfig[i].mode == 0 && encoderConfig[i].value[0] == 0) //If is a System Action AND master volume selected
         {
           Consumer.write(MEDIA_VOL_UP);
         }
+        else if (encoderConfig[i].mode == 0 && encoderConfig[i].value[0] == 1) //If is a System Action AND master volume selected
+        {
+          Consumer.write(HID_CONSUMER_FAST_FORWARD);
+        }
+        else if (encoderConfig[i].mode == 1) //If is a key action
+        {
+          Keyboard.write(encoderConfig[i].value[0]); //get the ascii code, and press the key
+        }
       }
-      else
+      else //Encoder Anti-ClockWise Turn
       {
         Serial.print("Encoder");
         Serial.print(i);
@@ -398,6 +405,14 @@ void loop()
         if (encoderConfig[i].mode == 0 && encoderConfig[i].value[0] == 0)
         {
           Consumer.write(MEDIA_VOL_DOWN);
+        }
+        else if (encoderConfig[i].mode == 0 && encoderConfig[i].value[0] == 1) //If is a System Action AND master volume selected
+        {
+          Consumer.write(HID_CONSUMER_REWIND);
+        }
+        else if (encoderConfig[i].mode == 1) //If is a key action
+        {
+          Keyboard.write(encoderConfig[i].value[1]); //get the ascii code, and press the key
         }
       }
       encodersLastValue[i] = encodersPosition[i];
@@ -435,10 +450,10 @@ void loop()
       Serial.println("OK");
     }
 
-    else if (command == "set-encoder")
+    else if (command == "set-encoder") //Set encoder action
     {
-      encoderConfig[arg[0]].mode = arg[1];
-      for (byte i = 0; i < 3; i++)
+      encoderConfig[arg[0]].mode = arg[1]; //Get the mode and save it in the config
+      for (byte i = 0; i < 3; i++)         //for all values, save it in the config
       {
         encoderConfig[arg[0]].value[i] = arg[i + 2];
       }
@@ -470,32 +485,40 @@ void loop()
       Serial.println("OK");
     }
 
-    else if (command == "get-config")
+    else if (command == "get-config") //Get config command
     {
-      for (byte i = 0; i < 6; i++)
+      for (byte i = 0; i < 6; i++) //for all keys, get the config and display it
       {
         Serial.print("Key");
         Serial.print(i);
         Serial.print(" ");
         Serial.print(keyConf[i].mode);
+        Serial.print(" ");
+        Serial.print(keyConf[i].value[0]);
         Serial.print(":");
-        Serial.println(keyConf[i].value[0]);
+        Serial.print(keyConf[i].value[1]);
+        Serial.print(":");
+        Serial.println(keyConf[i].value[2]);
       }
-      for (byte i = 0; i < 3; i++)
+      for (byte i = 0; i < 3; i++) //for all encoders, get the config and display it
       {
         Serial.print("Encoder");
         Serial.print(i);
         Serial.print(" ");
         Serial.print(encoderConfig[i].mode);
+        Serial.print(" ");
+        Serial.print(encoderConfig[i].value[0]);
         Serial.print(":");
-        Serial.println(encoderConfig[i].value[0]);
+        Serial.print(encoderConfig[i].value[1]);
+        Serial.print(":");
+        Serial.println(encoderConfig[i].value[2]);
       }
     }
-    else if (command == "save-config")
+    else if (command == "save-config") //save-config command
     {
       saveToEEPROM();
     }
-    else if (command == "read-config")
+    else if (command == "read-config") //read-config command
     {
       readEEPROM();
     }

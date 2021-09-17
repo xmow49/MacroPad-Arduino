@@ -1,0 +1,17 @@
+Vert:
+	3.4V
+	42mA
+	80ohm
+
+Rouge:
+	3.8V
+	42mA
+	90ohm
+
+Bleu:
+	3.52V
+	45mA
+	78.2ohm
+
+
+
