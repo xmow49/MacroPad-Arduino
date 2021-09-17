@@ -69,10 +69,9 @@ set-encoder n 2 65,66 #KeyA + KeyB
 set-key <n key> <mode> <value> <value optionel> <value optionel>
 command  arg0    arg1   arg2        arg3             arg4
 mode:
- - 0 : Key Combination
- - 1 : System Action
- - 2 : Key Combination DOWN
- - 3 : Midi
+ - 0 : System Action
+ - 1 : Key Combination
+ - 2 : Midi
 ----------------------------------------
 set-key 0 1 182 #previous
 set-key 1 1 205 #PlayPause

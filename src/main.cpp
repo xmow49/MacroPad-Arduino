@@ -30,13 +30,13 @@ const short hexAction[17] PROGMEM = {0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xCD,
 struct EncoderConf
 {
   byte mode;
-  byte value[3];
+  short value[3];
 };
 
 struct KeyConf
 {
   byte mode;
-  byte value[3];
+  short value[3];
 };
 
 EncoderConf encoderConfig[3];
@@ -356,9 +356,10 @@ void loop()
     {
       Serial.print("Key");
       Serial.println(i);
-      if (keyConf[i].mode == 1) //System Action
+      if (keyConf[i].mode == 0) //System Action
       {
         Consumer.write(keyConf[i].value[0]);
+        Serial.println(keyConf[i].value[0]);
         currentMillis = millis() / 100;
         while (digitalRead(keysPins[i]))
         {
@@ -430,7 +431,7 @@ void loop()
     }
 
     String command = getArgs(serialMsg, ' ', 0);
-    byte arg[5];
+    short arg[5];
     for (byte i = 0; i < 5; i++)
     {
       arg[i] = getArgs(serialMsg, ' ', i + 1).toInt();
@@ -527,6 +528,28 @@ void loop()
     {
       setRGB(arg[1], arg[2], arg[3]);
       Serial.println("OK");
+    }
+    else if (command == "reset-config")
+    {
+      for (byte i = 0; i < 3; i++)
+      {
+        encoderConfig[i].mode = 0;
+        for (byte j = 0; j < 3; j++)
+        {
+          encoderConfig[i].value[j] = 0;
+        }
+      }
+
+      for (byte i = 0; i < 6; i++)
+      {
+        keyConf[i].mode = 0;
+        for (byte j = 0; j < 3; j++)
+        {
+          keyConf[i].value[j] = 0;
+        }
+      }
+      Serial.println("OK");
+      
     }
 
     else
