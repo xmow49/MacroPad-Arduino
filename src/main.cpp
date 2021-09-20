@@ -356,6 +356,8 @@ void loop()
     {
       Serial.print("Key");
       Serial.println(i);
+      delay(100);
+      Keyboard.releaseAll();
       if (keyConf[i].mode == 0) //System Action
       {
         Consumer.write(keyConf[i].value[0]);
@@ -369,6 +371,39 @@ void loop()
             delay(50);
           }
         }
+      }
+      else if (keyConf[i].mode == 1) //Key Combination
+      {
+
+        for (byte j = 0; j < 3; j++) //for each key
+        {
+          if (keyConf[i].value[j] == 0 && keyConf[i].value[j] != 60) //if no key and key 60 (<) because impoved keyboard
+          {
+          }
+          else if (keyConf[i].value[j] <= 90 && keyConf[i].value[j] >= 65)//alaphabet
+          {                                           //ascii normal code exept '<' (60)
+            Keyboard.press(keyConf[i].value[j] + 32); //Normal character + 32 (ascii Upercase to lowcase)
+          }
+          else if (keyConf[i].value[j] <= 57 && keyConf[i].value[j] >= 48)//numbers
+          {
+            Keyboard.press(keyConf[i].value[j]); //Normal number
+          }
+          else
+          {
+            Keyboard.press(KeyboardKeycode(keyConf[i].value[j])); //Improved keyboard
+            Serial.print("Press ");
+            Serial.println(keyConf[i].value[j]);
+          }
+        }
+
+        while (digitalRead(keysPins[i]))
+        {
+          if (currentMillis + repeatDelay <= millis() / 100)
+          {
+            delay(50);
+          }
+        }
+        Keyboard.releaseAll();
       }
     }
   }
@@ -446,8 +481,12 @@ void loop()
 
     if (command == "set-key")
     {
-      keyConf[arg[0]].mode = arg[1];     //Save Mode
-      keyConf[arg[0]].value[0] = arg[2]; //Save Value 1
+      keyConf[arg[0]].mode = arg[1]; //Save Mode
+      for (byte i = 0; i < 3; i++)   //foreach value in the command
+      {
+        keyConf[arg[0]].value[i] = arg[i + 2]; //Save Values
+      }
+
       Serial.println("OK");
     }
 
@@ -549,7 +588,6 @@ void loop()
         }
       }
       Serial.println("OK");
-      
     }
 
     else
