@@ -380,19 +380,27 @@ void loop()
           if (keyConf[i].value[j] == 0 && keyConf[i].value[j] != 60) //if no key and key 60 (<) because impoved keyboard
           {
           }
-          else if (keyConf[i].value[j] <= 90 && keyConf[i].value[j] >= 65)//alaphabet
-          {                                           //ascii normal code exept '<' (60)
-            Keyboard.press(keyConf[i].value[j] + 32); //Normal character + 32 (ascii Upercase to lowcase)
+          else if (keyConf[i].value[j] <= 32 && keyConf[i].value[j] >= 8) //function key (spaces, shift, etc)
+          {
+            Keyboard.press(keyConf[i].value[j]);
+            Serial.print("Press ");
+            Serial.println(keyConf[i].value[j]);
           }
-          else if (keyConf[i].value[j] <= 57 && keyConf[i].value[j] >= 48)//numbers
+          else if (keyConf[i].value[j] <= 90 && keyConf[i].value[j] >= 65) //alaphabet
+          {                                                                //ascii normal code exept '<' (60)
+            Keyboard.press(keyConf[i].value[j] + 32);                      //Normal character + 32 (ascii Upercase to lowcase)
+            Serial.print("Press ");
+            Serial.println(keyConf[i].value[j] + 32);
+          }
+          else if (keyConf[i].value[j] <= 57 && keyConf[i].value[j] >= 48) //numbers
           {
             Keyboard.press(keyConf[i].value[j]); //Normal number
           }
           else
           {
-            Keyboard.press(KeyboardKeycode(keyConf[i].value[j])); //Improved keyboard
+            Keyboard.press(KeyboardKeycode(keyConf[i].value[j] - 100)); //Improved keyboard
             Serial.print("Press ");
-            Serial.println(keyConf[i].value[j]);
+            Serial.println(keyConf[i].value[j] - 100);
           }
         }
 
