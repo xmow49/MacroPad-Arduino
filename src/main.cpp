@@ -12,53 +12,46 @@
 #define FONT2 Cooper19
 #define FONT Adafruit5x7
 
-bool textScrolling = 0;
-//List of action
-/*const String strAction[17] PROGMEM = {"MediaFastForward", "MediaRewind", "MediaNext", "MediaPrevious", "MediaStop", "MediaPlayPause",
-                      "MediaVolumeMute", "MediaVolumeUP", "MediaVolumeDOWN",
-                      "ConsumerEmailReader", "ConsumerCalculator", "ConsumerExplorer",
-                      "ConsumerBrowserHome", "ConsumerBrowserBack", "ConsumerBrowserForward", "ConsumerBrowserRefresh", "ConsumerBrowserBookmarks"};
+bool textScrolling = 0; // Store the state of text scrolling
+String screenTxt = "MacroPad"; //Text display on the screen
+uint32_t tickTime = 0; //for the scrolling text
 
-//List of actions in Hex
-const short hexAction[17] PROGMEM = {0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xCD,
-                                     0xE2, 0xE9, 0xEA,
-                                     0x18A, 0x192, 0x194,
-                                     0x223, 0x224, 0x225, 0x227, 0x22A};
-*/
-//List of key current action
-
-struct EncoderConf
+struct EncoderConf //Prepare encoders config
 {
   byte mode;
   short value[3];
 };
 
-struct KeyConf
+struct KeyConf //Prepare keys config
 {
   byte mode;
   short value[3];
 };
 
-EncoderConf encoderConfig[3];
-KeyConf keyConf[6];
+EncoderConf encoderConfig[3]; //Create the encoder config with 3 encoders
+KeyConf keyConf[6];           //Create the key config with 6 keys
 
-volatile int encodersPosition[3] = {50, 50, 50};
-int encodersLastValue[3] = {50, 50, 50};
+volatile int encodersPosition[3] = {50, 50, 50}; //temp virtual position of encoders
+int encodersLastValue[3] = {50, 50, 50};         //Value of encoders
 
-String serialMsg;
+String serialMsg; //String who store the serial message
 
-const byte keysPins[6] = {key0Pin, key1Pin, key2Pin, key3Pin, key4Pin, key5Pin};
-const byte encodersPins[9] = {encoderA0Pin, encoderB0Pin, encoderKey0Pin, encoderA1Pin, encoderB1Pin, encoderKey1Pin, encoderA2Pin, encoderB2Pin, encoderKey2Pin};
+const byte keysPins[6] = {key0Pin, key1Pin, key2Pin, key3Pin, key4Pin, key5Pin};                                                                                   //Pins of all keys
+const byte encodersPins[9] = {encoderA0Pin, encoderB0Pin, encoderKey0Pin, encoderA1Pin, encoderB1Pin, encoderKey1Pin, encoderA2Pin, encoderB2Pin, encoderKey2Pin}; //Pins of all encodes
 
-SSD1306AsciiAvrI2c oled;
-TickerState state;
+SSD1306AsciiAvrI2c oled; //This is the Oled display
+TickerState state;       //Ticker to run text scrooling
+
+
+const byte repeatDelay = 5;
+unsigned long currentMillis;
 
 String getArgs(String data, char separator, int index)
 {
-  //Function for separate String with special characters
-  int found = 0;
-  int strIndex[] = {0, -1};
-  int maxIndex = data.length() - 1;
+  //This Function separate String with special characters
+  volatile int found = 0;
+  volatile int strIndex[] = {0, -1};
+  volatile int maxIndex = data.length() - 1;
 
   for (int i = 0; i <= maxIndex && found <= index; i++)
   {
@@ -73,7 +66,7 @@ String getArgs(String data, char separator, int index)
   return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
-void encoder(byte encoder)
+void encoder(byte encoder) //function for the encoder interrupt
 {
   static unsigned long lastInterruptTime = 0;
   unsigned long interruptTime = millis();
@@ -90,41 +83,40 @@ void encoder(byte encoder)
   case 2:
     pin = encodersPins[7];
     break;
-
   default:
     return;
     break;
   }
   if (interruptTime - lastInterruptTime > 5)
   {
-    if (digitalRead(pin) == 0)
+    if (digitalRead(pin) == 0) //check the rotation direction
     {
-      encodersPosition[encoder] = encodersLastValue[encoder] - 10;
+      encodersPosition[encoder] = encodersLastValue[encoder] - 10; //anti-clockwise
     }
     else
     {
-      encodersPosition[encoder] = encodersLastValue[encoder] + 10;
+      encodersPosition[encoder] = encodersLastValue[encoder] + 10; //clockwise
     }
   }
   lastInterruptTime = interruptTime;
 }
 
-void encoder0()
+void encoder0() //function call by the interrupt, and redirect to the main encoder fonction
 {
   encoder(0);
 }
 
-void encoder1()
+void encoder1() //function call by the interrupt, and redirect to the main encoder fonction
 {
   encoder(1);
 }
 
-void encoder2()
+void encoder2() //function call by the interrupt, and redirect to the main encoder fonction
 {
   encoder(2);
 }
 
-void saveToEEPROM()
+void saveToEEPROM() //Save all config into the atmega eeprom
 {
   Serial.println("-----Save to EEPROM-----");
 
@@ -186,7 +178,7 @@ void saveToEEPROM()
   }
 }
 
-void readEEPROM()
+void readEEPROM() //Read all config from the atmega eeprom and store it into the temp config
 {
   Serial.println("-----Read from EEPROM-----");
   volatile short eepromAddress = 0;
@@ -246,10 +238,9 @@ void readEEPROM()
   }
 }
 
-String screenTxt = "MacroPad";
 
-uint32_t tickTime = 0;
-void scrollText()
+
+void scrollText() //function to scoll the text into the display
 {
   if (tickTime <= millis())
   {
@@ -267,7 +258,7 @@ void scrollText()
   }
 }
 
-void centerText(String text)
+void centerText(String text) //Display the text in the center of the screen
 {
   int str_len = text.length();
   char char_array[str_len];
@@ -283,7 +274,7 @@ void centerText(String text)
   textScrolling = false;
 }
 
-void setRGB(byte r, byte g, byte b)
+void setRGB(byte r, byte g, byte b) //Set rgb value for LEDs
 {
   analogWrite(ledR, r);
   analogWrite(ledG, g);
@@ -344,8 +335,7 @@ void setup()
   delay(1000);
 }
 
-const byte repeatDelay = 5;
-unsigned long currentMillis;
+
 
 void loop()
 {
@@ -356,21 +346,20 @@ void loop()
     {
       Serial.print("Key");
       Serial.println(i);
-      delay(100);
-      Keyboard.releaseAll();
+      //Keyboard.releaseAll();
       if (keyConf[i].mode == 0) //System Action
       {
         Consumer.write(keyConf[i].value[0]);
         Serial.println(keyConf[i].value[0]);
         currentMillis = millis() / 100;
-        while (digitalRead(keysPins[i]))
-        {
-          if (currentMillis + repeatDelay <= millis() / 100)
-          {
-            Consumer.write(keyConf[i].value[0]);
-            delay(50);
-          }
-        }
+        // while (digitalRead(keysPins[i]))
+        // {
+        //   if (currentMillis + repeatDelay <= millis() / 100)
+        //   {
+        //     Consumer.write(keyConf[i].value[0]);
+        //     delay(50);
+        //   }
+        // }
       }
       else if (keyConf[i].mode == 1) //Key Combination
       {
@@ -404,13 +393,13 @@ void loop()
           }
         }
 
-        while (digitalRead(keysPins[i]))
-        {
-          if (currentMillis + repeatDelay <= millis() / 100)
-          {
-            delay(50);
-          }
-        }
+        // while (digitalRead(keysPins[i]))
+        // {
+        //   if (currentMillis + repeatDelay <= millis() / 100)
+        //   {
+        //     delay(50);
+        //   }
+        // }
         Keyboard.releaseAll();
       }
     }
@@ -468,10 +457,7 @@ void loop()
     serialMsg = Serial.readString();
     serialMsg.trim();
 
-    if (serialMsg.indexOf("ping") > -1)
-    {
-      Serial.println("pong");
-    }
+
 
     String command = getArgs(serialMsg, ' ', 0);
     short arg[5];
@@ -486,8 +472,11 @@ void loop()
     Serial.println(arg[3]); //Value 2
     Serial.println(arg[4]); //Value 3
     */
-
-    if (command == "set-key")
+    if (command == "ping")
+    {
+      Serial.println("pong");
+    }
+    else if (command == "set-key")
     {
       keyConf[arg[0]].mode = arg[1]; //Save Mode
       for (byte i = 0; i < 3; i++)   //foreach value in the command
