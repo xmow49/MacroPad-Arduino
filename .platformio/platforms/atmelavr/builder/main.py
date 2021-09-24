@@ -82,7 +82,7 @@ def BeforeUpload(target, source, env):  # pylint: disable=W0613,W0621
         before_ports = get_serial_ports()
 
         if upload_options.get("use_1200bps_touch", False):
-            env.TouchSerialPort("$UPLOAD_PORT", 1200)
+            env.TouchSerialPort("$UPLOAD_PORT", 2400)
 
         if upload_options.get("wait_for_upload_port", False):
             env.Replace(UPLOAD_PORT=env.WaitForNewSerialPort(before_ports))
