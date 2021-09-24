@@ -12,9 +12,9 @@
 #define FONT2 Cooper19
 #define FONT Adafruit5x7
 
-bool textScrolling = 0; // Store the state of text scrolling
+bool textScrolling = 0;        // Store the state of text scrolling
 String screenTxt = "MacroPad"; //Text display on the screen
-uint32_t tickTime = 0; //for the scrolling text
+uint32_t tickTime = 0;         //for the scrolling text
 
 struct EncoderConf //Prepare encoders config
 {
@@ -42,9 +42,10 @@ const byte encodersPins[9] = {encoderA0Pin, encoderB0Pin, encoderKey0Pin, encode
 SSD1306AsciiAvrI2c oled; //This is the Oled display
 TickerState state;       //Ticker to run text scrooling
 
-
 const byte repeatDelay = 5;
 unsigned long currentMillis;
+
+bool keyPressed[6];
 
 String getArgs(String data, char separator, int index)
 {
@@ -238,8 +239,6 @@ void readEEPROM() //Read all config from the atmega eeprom and store it into the
   }
 }
 
-
-
 void scrollText() //function to scoll the text into the display
 {
   if (tickTime <= millis())
@@ -335,8 +334,6 @@ void setup()
   delay(1000);
 }
 
-
-
 void loop()
 {
   //Check Keys
@@ -344,64 +341,76 @@ void loop()
   {
     if (digitalRead(keysPins[i]))
     {
-      Serial.print("Key");
-      Serial.println(i);
-      //Keyboard.releaseAll();
-      if (keyConf[i].mode == 0) //System Action
-      {
-        Consumer.write(keyConf[i].value[0]);
-        Serial.println(keyConf[i].value[0]);
-        currentMillis = millis() / 100;
-        // while (digitalRead(keysPins[i]))
-        // {
-        //   if (currentMillis + repeatDelay <= millis() / 100)
-        //   {
-        //     Consumer.write(keyConf[i].value[0]);
-        //     delay(50);
-        //   }
-        // }
+      if (keyPressed[i])
+      { //if the key is already pressed
       }
-      else if (keyConf[i].mode == 1) //Key Combination
+      else
       {
-
-        for (byte j = 0; j < 3; j++) //for each key
+        Serial.print("Key");
+        Serial.println(i);
+        //Keyboard.releaseAll();
+        if (keyConf[i].mode == 0) //System Action
         {
-          if (keyConf[i].value[j] == 0 && keyConf[i].value[j] != 60) //if no key and key 60 (<) because impoved keyboard
-          {
-          }
-          else if (keyConf[i].value[j] <= 32 && keyConf[i].value[j] >= 8) //function key (spaces, shift, etc)
-          {
-            Keyboard.press(keyConf[i].value[j]);
-            Serial.print("Press ");
-            Serial.println(keyConf[i].value[j]);
-          }
-          else if (keyConf[i].value[j] <= 90 && keyConf[i].value[j] >= 65) //alaphabet
-          {                                                                //ascii normal code exept '<' (60)
-            Keyboard.press(keyConf[i].value[j] + 32);                      //Normal character + 32 (ascii Upercase to lowcase)
-            Serial.print("Press ");
-            Serial.println(keyConf[i].value[j] + 32);
-          }
-          else if (keyConf[i].value[j] <= 57 && keyConf[i].value[j] >= 48) //numbers
-          {
-            Keyboard.press(keyConf[i].value[j]); //Normal number
-          }
-          else
-          {
-            Keyboard.press(KeyboardKeycode(keyConf[i].value[j] - 100)); //Improved keyboard
-            Serial.print("Press ");
-            Serial.println(keyConf[i].value[j] - 100);
-          }
+          Consumer.write(keyConf[i].value[0]);
+          //Serial.println(keyConf[i].value[0]);
+          currentMillis = millis() / 100;
+          // while (digitalRead(keysPins[i]))
+          // {
+          //   if (currentMillis + repeatDelay <= millis() / 100)
+          //   {
+          //     Consumer.write(keyConf[i].value[0]);
+          //     delay(50);
+          //   }
+          // }
         }
+        else if (keyConf[i].mode == 1) //Key Combination
+        {
 
-        // while (digitalRead(keysPins[i]))
-        // {
-        //   if (currentMillis + repeatDelay <= millis() / 100)
-        //   {
-        //     delay(50);
-        //   }
-        // }
-        Keyboard.releaseAll();
+          for (byte j = 0; j < 3; j++) //for each key
+          {
+            if (keyConf[i].value[j] == 0 && keyConf[i].value[j] != 60) //if no key and key 60 (<) because impoved keyboard
+            {
+            }
+            else if (keyConf[i].value[j] <= 32 && keyConf[i].value[j] >= 8) //function key (spaces, shift, etc)
+            {
+              Keyboard.press(keyConf[i].value[j]);
+              Serial.print("Press ");
+              Serial.println(keyConf[i].value[j]);
+            }
+            else if (keyConf[i].value[j] <= 90 && keyConf[i].value[j] >= 65) //alaphabet
+            {                                                                //ascii normal code exept '<' (60)
+              Keyboard.press(keyConf[i].value[j] + 32);                      //Normal character + 32 (ascii Upercase to lowcase)
+              Serial.print("Press ");
+              Serial.println(keyConf[i].value[j] + 32);
+            }
+            else if (keyConf[i].value[j] <= 57 && keyConf[i].value[j] >= 48) //numbers
+            {
+              Keyboard.press(keyConf[i].value[j]); //Normal number
+            }
+            else
+            {
+              Keyboard.press(KeyboardKeycode(keyConf[i].value[j] - 100)); //Improved keyboard
+              Serial.print("Press ");
+              Serial.println(keyConf[i].value[j] - 100);
+            }
+          }
+
+          // while (digitalRead(keysPins[i]))
+          // {
+          //   if (currentMillis + repeatDelay <= millis() / 100)
+          //   {
+          //     delay(50);
+          //   }
+          // }
+        }
       }
+
+      keyPressed[i] = true;
+    }
+    else
+    {
+      keyPressed[i] = false;
+      Keyboard.releaseAll();
     }
   }
 
@@ -452,12 +461,24 @@ void loop()
     }
   }
 
+  if (!digitalRead(encoderKey0Pin) && !digitalRead(encoderKey1Pin) && !digitalRead(encoderKey2Pin))//install the software
+  {
+    Consumer.write(0x223); //open default web Browser
+    delay(200);
+    Keyboard.press(KEY_LEFT_CTRL); //focus the url with CTRL + L
+    Keyboard.press(KEY_L);
+    delay(10);
+    Keyboard.releaseAll();
+    delay(100);
+    Keyboard.print("https://github.com/xmow49/MacroPad-Software/releases"); //enter the url
+    delay(100);
+    Keyboard.write(KEY_ENTER); //go to the url
+  }
+
   if (Serial.available() > 0)
   {
     serialMsg = Serial.readString();
     serialMsg.trim();
-
-
 
     String command = getArgs(serialMsg, ' ', 0);
     short arg[5];
