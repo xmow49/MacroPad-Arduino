@@ -81,7 +81,7 @@ set-key 3 1 179
 set-key 4 1 183
 set-key 5 1 179
 
-set-key n 2 65 #KeyA
+set-key 0 1 65 #KeyA
 set-key n 2 65,66 #KeyA + KeyB
 
 ------------------------------------

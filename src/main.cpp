@@ -346,9 +346,7 @@ void loop()
       }
       else
       {
-        Serial.print("Key");
-        Serial.println(i);
-        //Keyboard.releaseAll();
+        Serial.print("Key" + String(i));
         if (keyConf[i].mode == 0) //System Action
         {
           Consumer.write(keyConf[i].value[0]);
@@ -421,9 +419,8 @@ void loop()
     {
       if (encodersPosition[i] < encodersLastValue[i]) //Encoder ClockWise Turn
       {
-        Serial.print("Encoder");
-        Serial.print(i);
-        Serial.println(":UP");
+
+        Serial.print("Encoder" + String(i) + ":UP");
 
         if (encoderConfig[i].mode == 0 && encoderConfig[i].value[0] == 0) //If is a System Action AND master volume selected
         {
@@ -440,9 +437,7 @@ void loop()
       }
       else //Encoder Anti-ClockWise Turn
       {
-        Serial.print("Encoder");
-        Serial.print(i);
-        Serial.println(":DOWN");
+        Serial.print("Encoder" + String(i) + ":DOWN");
 
         if (encoderConfig[i].mode == 0 && encoderConfig[i].value[0] == 0)
         {
@@ -461,7 +456,7 @@ void loop()
     }
   }
 
-  if (!digitalRead(encoderKey0Pin) && !digitalRead(encoderKey1Pin) && !digitalRead(encoderKey2Pin))//install the software
+  if (!digitalRead(encoderKey0Pin) && !digitalRead(encoderKey1Pin) && !digitalRead(encoderKey2Pin)) //install the software
   {
     Consumer.write(0x223); //open default web Browser
     delay(200);
