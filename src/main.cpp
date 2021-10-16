@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <pins.h>
+#include <config.h>
 #define HID_CUSTOM_LAYOUT
 #define LAYOUT_FRENCH
 #include <HID-Project.h>
@@ -28,8 +28,8 @@ struct KeyConf //Prepare keys config
   short value[3];
 };
 
-EncoderConf encoderConfig[3]; //Create the encoder config with 3 encoders
-KeyConf keyConf[6];           //Create the key config with 6 keys
+EncoderConf encoderConfig[3][profileCount - 1]; //Create the encoder config with 3 encoders
+KeyConf keyConf[6][profileCount - 1];           //Create the key config with 6 keys
 
 volatile int encodersPosition[3] = {50, 50, 50}; //temp virtual position of encoders
 int encodersLastValue[3] = {50, 50, 50};         //Value of encoders
@@ -46,6 +46,8 @@ const byte repeatDelay = 5;
 unsigned long currentMillis;
 
 bool keyPressed[6];
+
+byte currentProfile = 0;
 
 String getArgs(String data, char separator, int index)
 {
@@ -128,24 +130,24 @@ void saveToEEPROM() //Save all config into the atmega eeprom
     Serial.print(i);
     Serial.print(" ");
 
-    Serial.print(keyConf[i].mode);
-    EEPROM.put(eepromAddress, keyConf[i].mode);
-    eepromAddress += sizeof(keyConf[i].mode);
+    Serial.print(keyConf[i][currentProfile].mode);
+    EEPROM.put(eepromAddress, keyConf[i][currentProfile].mode);
+    eepromAddress += sizeof(keyConf[i][currentProfile].mode);
 
     Serial.print(":");
-    Serial.print(keyConf[i].value[0]);
-    EEPROM.put(eepromAddress, keyConf[i].value[0]);
-    eepromAddress += sizeof(keyConf[i].value[0]);
+    Serial.print(keyConf[i][currentProfile].value[0]);
+    EEPROM.put(eepromAddress, keyConf[i][currentProfile].value[0]);
+    eepromAddress += sizeof(keyConf[i][currentProfile].value[0]);
 
     Serial.print(",");
-    Serial.print(keyConf[i].value[1]);
-    EEPROM.put(eepromAddress, keyConf[i].value[1]);
-    eepromAddress += sizeof(keyConf[i].value[1]);
+    Serial.print(keyConf[i][currentProfile].value[1]);
+    EEPROM.put(eepromAddress, keyConf[i][currentProfile].value[1]);
+    eepromAddress += sizeof(keyConf[i][currentProfile].value[1]);
 
     Serial.print(",");
-    Serial.println(keyConf[i].value[2]);
-    EEPROM.put(eepromAddress, keyConf[i].value[2]);
-    eepromAddress += sizeof(keyConf[i].value[2]);
+    Serial.println(keyConf[i][currentProfile].value[2]);
+    EEPROM.put(eepromAddress, keyConf[i][currentProfile].value[2]);
+    eepromAddress += sizeof(keyConf[i][currentProfile].value[2]);
   }
 
   for (byte i = 0; i < 3; i++)
@@ -155,27 +157,27 @@ void saveToEEPROM() //Save all config into the atmega eeprom
     Serial.print(" ");
 
     //Save Mode
-    Serial.print(encoderConfig[i].mode);
-    EEPROM.put(eepromAddress, encoderConfig[i].mode);
-    eepromAddress += sizeof(encoderConfig[i].mode);
+    Serial.print(encoderConfig[i][currentProfile].mode);
+    EEPROM.put(eepromAddress, encoderConfig[i][currentProfile].mode);
+    eepromAddress += sizeof(encoderConfig[i][currentProfile].mode);
 
     //Save value 1
     Serial.print(":");
-    Serial.print(encoderConfig[i].value[0]);
-    EEPROM.put(eepromAddress, encoderConfig[i].value[0]);
-    eepromAddress += sizeof(encoderConfig[i].value[0]);
+    Serial.print(encoderConfig[i][currentProfile].value[0]);
+    EEPROM.put(eepromAddress, encoderConfig[i][currentProfile].value[0]);
+    eepromAddress += sizeof(encoderConfig[i][currentProfile].value[0]);
 
     //Save value 2
     Serial.print(",");
-    Serial.print(encoderConfig[i].value[1]);
-    EEPROM.put(eepromAddress, encoderConfig[i].value[1]);
-    eepromAddress += sizeof(encoderConfig[i].value[1]);
+    Serial.print(encoderConfig[i][currentProfile].value[1]);
+    EEPROM.put(eepromAddress, encoderConfig[i][currentProfile].value[1]);
+    eepromAddress += sizeof(encoderConfig[i][currentProfile].value[1]);
 
     //Save value 3
     Serial.print(",");
-    Serial.println(encoderConfig[i].value[2]);
-    EEPROM.put(eepromAddress, encoderConfig[i].value[2]);
-    eepromAddress += sizeof(encoderConfig[i].value[2]);
+    Serial.println(encoderConfig[i][currentProfile].value[2]);
+    EEPROM.put(eepromAddress, encoderConfig[i][currentProfile].value[2]);
+    eepromAddress += sizeof(encoderConfig[i][currentProfile].value[2]);
   }
 }
 
@@ -189,24 +191,24 @@ void readEEPROM() //Read all config from the atmega eeprom and store it into the
     Serial.print(i);
     Serial.print(" ");
 
-    EEPROM.get(eepromAddress, keyConf[i].mode);
-    Serial.print(keyConf[i].mode);
-    eepromAddress += sizeof(keyConf[i].mode);
+    EEPROM.get(eepromAddress, keyConf[i][currentProfile].mode);
+    Serial.print(keyConf[i][currentProfile].mode);
+    eepromAddress += sizeof(keyConf[i][currentProfile].mode);
 
     Serial.print(":");
-    EEPROM.get(eepromAddress, keyConf[i].value[0]);
-    Serial.print(keyConf[i].value[0]);
-    eepromAddress += sizeof(keyConf[i].value[0]);
+    EEPROM.get(eepromAddress, keyConf[i][currentProfile].value[0]);
+    Serial.print(keyConf[i][currentProfile].value[0]);
+    eepromAddress += sizeof(keyConf[i][currentProfile].value[0]);
 
     Serial.print(",");
-    EEPROM.get(eepromAddress, keyConf[i].value[1]);
-    Serial.print(keyConf[i].value[1]);
-    eepromAddress += sizeof(keyConf[i].value[1]);
+    EEPROM.get(eepromAddress, keyConf[i][currentProfile].value[1]);
+    Serial.print(keyConf[i][currentProfile].value[1]);
+    eepromAddress += sizeof(keyConf[i][currentProfile].value[1]);
 
     Serial.print(",");
-    EEPROM.get(eepromAddress, keyConf[i].value[2]);
-    Serial.println(keyConf[i].value[2]);
-    eepromAddress += sizeof(keyConf[i].value[2]);
+    EEPROM.get(eepromAddress, keyConf[i][currentProfile].value[2]);
+    Serial.println(keyConf[i][currentProfile].value[2]);
+    eepromAddress += sizeof(keyConf[i][currentProfile].value[2]);
   }
   for (byte i = 0; i < 3; i++)
   {
@@ -215,27 +217,27 @@ void readEEPROM() //Read all config from the atmega eeprom and store it into the
     Serial.print(" ");
 
     //Get Mode
-    EEPROM.get(eepromAddress, encoderConfig[i].mode);
-    Serial.print(encoderConfig[i].mode);
-    eepromAddress += sizeof(encoderConfig[i].mode);
+    EEPROM.get(eepromAddress, encoderConfig[i][currentProfile].mode);
+    Serial.print(encoderConfig[i][currentProfile].mode);
+    eepromAddress += sizeof(encoderConfig[i][currentProfile].mode);
 
     //Get Value 1
     Serial.print(":");
-    EEPROM.get(eepromAddress, encoderConfig[i].value[0]);
-    Serial.print(encoderConfig[i].value[0]);
-    eepromAddress += sizeof(encoderConfig[i].value[0]);
+    EEPROM.get(eepromAddress, encoderConfig[i][currentProfile].value[0]);
+    Serial.print(encoderConfig[i][currentProfile].value[0]);
+    eepromAddress += sizeof(encoderConfig[i][currentProfile].value[0]);
 
     //Get Value 2
     Serial.print(":");
-    EEPROM.get(eepromAddress, encoderConfig[i].value[1]);
-    Serial.print(encoderConfig[i].value[1]);
-    eepromAddress += sizeof(encoderConfig[i].value[1]);
+    EEPROM.get(eepromAddress, encoderConfig[i][currentProfile].value[1]);
+    Serial.print(encoderConfig[i][currentProfile].value[1]);
+    eepromAddress += sizeof(encoderConfig[i][currentProfile].value[1]);
 
     //Get Value 3
     Serial.print(":");
-    EEPROM.get(eepromAddress, encoderConfig[i].value[3]);
-    Serial.print(encoderConfig[i].value[3]);
-    eepromAddress += sizeof(encoderConfig[i].value[3]);
+    EEPROM.get(eepromAddress, encoderConfig[i][currentProfile].value[3]);
+    Serial.print(encoderConfig[i][currentProfile].value[3]);
+    eepromAddress += sizeof(encoderConfig[i][currentProfile].value[3]);
   }
 }
 
@@ -347,49 +349,49 @@ void loop()
       else
       {
         Serial.print("Key" + String(i));
-        if (keyConf[i].mode == 0) //System Action
+        if (keyConf[i][currentProfile].mode == 0) //System Action
         {
-          Consumer.write(keyConf[i].value[0]);
-          //Serial.println(keyConf[i].value[0]);
+          Consumer.write(keyConf[i][currentProfile].value[0]);
+          //Serial.println(keyConf[i][currentProfile].value[0]);
           currentMillis = millis() / 100;
           // while (digitalRead(keysPins[i]))
           // {
           //   if (currentMillis + repeatDelay <= millis() / 100)
           //   {
-          //     Consumer.write(keyConf[i].value[0]);
+          //     Consumer.write(keyConf[i][currentProfile].value[0]);
           //     delay(50);
           //   }
           // }
         }
-        else if (keyConf[i].mode == 1) //Key Combination
+        else if (keyConf[i][currentProfile].mode == 1) //Key Combination
         {
 
           for (byte j = 0; j < 3; j++) //for each key
           {
-            if (keyConf[i].value[j] == 0 && keyConf[i].value[j] != 60) //if no key and key 60 (<) because impoved keyboard
+            if (keyConf[i][currentProfile].value[j] == 0 && keyConf[i][currentProfile].value[j] != 60) //if no key and key 60 (<) because impoved keyboard
             {
             }
-            else if (keyConf[i].value[j] <= 32 && keyConf[i].value[j] >= 8) //function key (spaces, shift, etc)
+            else if (keyConf[i][currentProfile].value[j] <= 32 && keyConf[i][currentProfile].value[j] >= 8) //function key (spaces, shift, etc)
             {
-              Keyboard.press(keyConf[i].value[j]);
+              Keyboard.press(keyConf[i][currentProfile].value[j]);
               Serial.print("Press ");
-              Serial.println(keyConf[i].value[j]);
+              Serial.println(keyConf[i][currentProfile].value[j]);
             }
-            else if (keyConf[i].value[j] <= 90 && keyConf[i].value[j] >= 65) //alaphabet
+            else if (keyConf[i][currentProfile].value[j] <= 90 && keyConf[i][currentProfile].value[j] >= 65) //alaphabet
             {                                                                //ascii normal code exept '<' (60)
-              Keyboard.press(keyConf[i].value[j] + 32);                      //Normal character + 32 (ascii Upercase to lowcase)
+              Keyboard.press(keyConf[i][currentProfile].value[j] + 32);                      //Normal character + 32 (ascii Upercase to lowcase)
               Serial.print("Press ");
-              Serial.println(keyConf[i].value[j] + 32);
+              Serial.println(keyConf[i][currentProfile].value[j] + 32);
             }
-            else if (keyConf[i].value[j] <= 57 && keyConf[i].value[j] >= 48) //numbers
+            else if (keyConf[i][currentProfile].value[j] <= 57 && keyConf[i][currentProfile].value[j] >= 48) //numbers
             {
-              Keyboard.press(keyConf[i].value[j]); //Normal number
+              Keyboard.press(keyConf[i][currentProfile].value[j]); //Normal number
             }
             else
             {
-              Keyboard.press(KeyboardKeycode(keyConf[i].value[j] - 100)); //Improved keyboard
+              Keyboard.press(KeyboardKeycode(keyConf[i][currentProfile].value[j] - 100)); //Improved keyboard
               Serial.print("Press ");
-              Serial.println(keyConf[i].value[j] - 100);
+              Serial.println(keyConf[i][currentProfile].value[j] - 100);
             }
           }
 
@@ -422,34 +424,34 @@ void loop()
 
         Serial.print("Encoder" + String(i) + ":UP");
 
-        if (encoderConfig[i].mode == 0 && encoderConfig[i].value[0] == 0) //If is a System Action AND master volume selected
+        if (encoderConfig[i][currentProfile].mode == 0 && encoderConfig[i][currentProfile].value[0] == 0) //If is a System Action AND master volume selected
         {
           Consumer.write(MEDIA_VOL_UP);
         }
-        else if (encoderConfig[i].mode == 0 && encoderConfig[i].value[0] == 1) //If is a System Action AND master volume selected
+        else if (encoderConfig[i][currentProfile].mode == 0 && encoderConfig[i][currentProfile].value[0] == 1) //If is a System Action AND master volume selected
         {
           Consumer.write(HID_CONSUMER_FAST_FORWARD);
         }
-        else if (encoderConfig[i].mode == 1) //If is a key action
+        else if (encoderConfig[i][currentProfile].mode == 1) //If is a key action
         {
-          Keyboard.write(encoderConfig[i].value[0]); //get the ascii code, and press the key
+          Keyboard.write(encoderConfig[i][currentProfile].value[0]); //get the ascii code, and press the key
         }
       }
       else //Encoder Anti-ClockWise Turn
       {
         Serial.print("Encoder" + String(i) + ":DOWN");
 
-        if (encoderConfig[i].mode == 0 && encoderConfig[i].value[0] == 0)
+        if (encoderConfig[i][currentProfile].mode == 0 && encoderConfig[i][currentProfile].value[0] == 0)
         {
           Consumer.write(MEDIA_VOL_DOWN);
         }
-        else if (encoderConfig[i].mode == 0 && encoderConfig[i].value[0] == 1) //If is a System Action AND master volume selected
+        else if (encoderConfig[i][currentProfile].mode == 0 && encoderConfig[i][currentProfile].value[0] == 1) //If is a System Action AND master volume selected
         {
           Consumer.write(HID_CONSUMER_REWIND);
         }
-        else if (encoderConfig[i].mode == 1) //If is a key action
+        else if (encoderConfig[i][currentProfile].mode == 1) //If is a key action
         {
-          Keyboard.write(encoderConfig[i].value[1]); //get the ascii code, and press the key
+          Keyboard.write(encoderConfig[i][currentProfile].value[1]); //get the ascii code, and press the key
         }
       }
       encodersLastValue[i] = encodersPosition[i];
@@ -494,10 +496,10 @@ void loop()
     }
     else if (command == "set-key")
     {
-      keyConf[arg[0]].mode = arg[1]; //Save Mode
+      keyConf[arg[0]][currentProfile].mode = arg[1]; //Save Mode
       for (byte i = 0; i < 3; i++)   //foreach value in the command
       {
-        keyConf[arg[0]].value[i] = arg[i + 2]; //Save Values
+        keyConf[arg[0]][currentProfile].value[i] = arg[i + 2]; //Save Values
       }
 
       Serial.println("OK");
@@ -505,10 +507,10 @@ void loop()
 
     else if (command == "set-encoder") //Set encoder action
     {
-      encoderConfig[arg[0]].mode = arg[1]; //Get the mode and save it in the config
+      encoderConfig[arg[0]][currentProfile].mode = arg[1]; //Get the mode and save it in the config
       for (byte i = 0; i < 3; i++)         //for all values, save it in the config
       {
-        encoderConfig[arg[0]].value[i] = arg[i + 2];
+        encoderConfig[arg[0]][currentProfile].value[i] = arg[i + 2];
       }
       Serial.println("OK");
     }
@@ -545,26 +547,26 @@ void loop()
         Serial.print("Key");
         Serial.print(i);
         Serial.print(" ");
-        Serial.print(keyConf[i].mode);
+        Serial.print(keyConf[i][currentProfile].mode);
         Serial.print(" ");
-        Serial.print(keyConf[i].value[0]);
+        Serial.print(keyConf[i][currentProfile].value[0]);
         Serial.print(":");
-        Serial.print(keyConf[i].value[1]);
+        Serial.print(keyConf[i][currentProfile].value[1]);
         Serial.print(":");
-        Serial.println(keyConf[i].value[2]);
+        Serial.println(keyConf[i][currentProfile].value[2]);
       }
       for (byte i = 0; i < 3; i++) //for all encoders, get the config and display it
       {
         Serial.print("Encoder");
         Serial.print(i);
         Serial.print(" ");
-        Serial.print(encoderConfig[i].mode);
+        Serial.print(encoderConfig[i][currentProfile].mode);
         Serial.print(" ");
-        Serial.print(encoderConfig[i].value[0]);
+        Serial.print(encoderConfig[i][currentProfile].value[0]);
         Serial.print(":");
-        Serial.print(encoderConfig[i].value[1]);
+        Serial.print(encoderConfig[i][currentProfile].value[1]);
         Serial.print(":");
-        Serial.println(encoderConfig[i].value[2]);
+        Serial.println(encoderConfig[i][currentProfile].value[2]);
       }
     }
     else if (command == "save-config") //save-config command
@@ -585,19 +587,19 @@ void loop()
     {
       for (byte i = 0; i < 3; i++)
       {
-        encoderConfig[i].mode = 0;
+        encoderConfig[i][currentProfile].mode = 0;
         for (byte j = 0; j < 3; j++)
         {
-          encoderConfig[i].value[j] = 0;
+          encoderConfig[i][currentProfile].value[j] = 0;
         }
       }
 
       for (byte i = 0; i < 6; i++)
       {
-        keyConf[i].mode = 0;
+        keyConf[i][currentProfile].mode = 0;
         for (byte j = 0; j < 3; j++)
         {
-          keyConf[i].value[j] = 0;
+          keyConf[i][currentProfile].value[j] = 0;
         }
       }
       Serial.println("OK");
