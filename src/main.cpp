@@ -363,7 +363,7 @@ void loop()
   {
     selectProfile();
   }
-  else if (macropadNormalMode)
+  else if (macropadNormalMode) //Default mode
   {
 
     // Check Keys
