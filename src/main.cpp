@@ -13,7 +13,7 @@
 #define FONT Adafruit5x7
 
 bool textScrolling = 0;        // Store the state of text scrolling
-String screenTxt = "Macropad"; // Text display on the screen
+String screenTxt = "MacroPad"; // Text display on the screen
 uint32_t tickTime = 0;         // for the scrolling text
 
 struct EncoderConf // Prepare encoders config
@@ -28,13 +28,8 @@ struct KeyConf // Prepare keys config
   short value[3];
 };
 
-<<<<<<< HEAD
 EncoderConf encoderConfig[3][profileCount - 1]; // Create the encoder config with 3 encoders
 KeyConf keyConf[6][profileCount - 1];           // Create the key config with 6 keys
-=======
-EncoderConf encoderConfig[3][profileCount - 1]; //Create the encoder config with 3 encoders
-KeyConf keyConf[6][profileCount - 1];           //Create the key config with 6 keys
->>>>>>> 851f25ab2d54f9a64d2f87c943c28bcb58bf77d2
 
 volatile int encodersPosition[3] = {50, 50, 50}; // temp virtual position of encoders
 int encodersLastValue[3] = {50, 50, 50};         // Value of encoders
@@ -53,10 +48,9 @@ unsigned long currentMillis;
 bool keyPressed[6];
 bool encoderPressed[3];         // current state of encoder key
 bool selectProfileMode = false; // If is true, all function are disabled, and keys do the profile selection
+bool macropadNormalMode = true; // normal mode
 
 volatile long encoderMillis;
-
-byte currentProfile = 0;
 
 byte currentProfile = 0;
 
@@ -167,11 +161,7 @@ void saveToEEPROM() // Save all config into the atmega eeprom
     Serial.print(i);
     Serial.print(" ");
 
-<<<<<<< HEAD
     // Save Mode
-=======
-    //Save Mode
->>>>>>> 851f25ab2d54f9a64d2f87c943c28bcb58bf77d2
     Serial.print(encoderConfig[i][currentProfile].mode);
     EEPROM.put(eepromAddress, encoderConfig[i][currentProfile].mode);
     eepromAddress += sizeof(encoderConfig[i][currentProfile].mode);
@@ -231,11 +221,7 @@ void readEEPROM() // Read all config from the atmega eeprom and store it into th
     Serial.print(i);
     Serial.print(" ");
 
-<<<<<<< HEAD
     // Get Mode
-=======
-    //Get Mode
->>>>>>> 851f25ab2d54f9a64d2f87c943c28bcb58bf77d2
     EEPROM.get(eepromAddress, encoderConfig[i][currentProfile].mode);
     Serial.print(encoderConfig[i][currentProfile].mode);
     eepromAddress += sizeof(encoderConfig[i][currentProfile].mode);
@@ -312,8 +298,8 @@ void selectProfile()
   centerText(screenTxt);
   textScrolling = false;
 
-  for(byte i = 0; i <= 5; i++){
-    
+  for (byte i = 0; i <= 5; i++)
+  {
   }
 }
 
@@ -366,17 +352,18 @@ void setup()
   delay(1000);
   setRGB(255, 0, 0);
 
+  centerText("Macropad");
+  centerText("Macropad");
   delay(1000);
 }
 
 void loop()
 {
-
-  if (selectProfileMode) // Select profile Mode
+  if (selectProfileMode)
   {
     selectProfile();
   }
-  else // disable All macropad function
+  else if (macropadNormalMode)
   {
 
     // Check Keys
@@ -384,34 +371,14 @@ void loop()
     {
       if (digitalRead(keysPins[i]))
       {
-<<<<<<< HEAD
         if (keyPressed[i])
         { // if the key is already pressed
         }
         else
-=======
-        Serial.print("Key" + String(i));
-        if (keyConf[i][currentProfile].mode == 0) //System Action
-        {
-          Consumer.write(keyConf[i][currentProfile].value[0]);
-          //Serial.println(keyConf[i][currentProfile].value[0]);
-          currentMillis = millis() / 100;
-          // while (digitalRead(keysPins[i]))
-          // {
-          //   if (currentMillis + repeatDelay <= millis() / 100)
-          //   {
-          //     Consumer.write(keyConf[i][currentProfile].value[0]);
-          //     delay(50);
-          //   }
-          // }
-        }
-        else if (keyConf[i][currentProfile].mode == 1) //Key Combination
->>>>>>> 851f25ab2d54f9a64d2f87c943c28bcb58bf77d2
         {
           Serial.print("Key" + String(i));
           if (keyConf[i][currentProfile].mode == 0) // System Action
           {
-<<<<<<< HEAD
             Consumer.write(keyConf[i][currentProfile].value[0]);
             // Serial.println(keyConf[i][currentProfile].value[0]);
             currentMillis = millis() / 100;
@@ -454,32 +421,6 @@ void loop()
                 Serial.print("Press ");
                 Serial.println(keyConf[i][currentProfile].value[j] - 100);
               }
-=======
-            if (keyConf[i][currentProfile].value[j] == 0 && keyConf[i][currentProfile].value[j] != 60) //if no key and key 60 (<) because impoved keyboard
-            {
-            }
-            else if (keyConf[i][currentProfile].value[j] <= 32 && keyConf[i][currentProfile].value[j] >= 8) //function key (spaces, shift, etc)
-            {
-              Keyboard.press(keyConf[i][currentProfile].value[j]);
-              Serial.print("Press ");
-              Serial.println(keyConf[i][currentProfile].value[j]);
-            }
-            else if (keyConf[i][currentProfile].value[j] <= 90 && keyConf[i][currentProfile].value[j] >= 65) //alaphabet
-            {                                                                //ascii normal code exept '<' (60)
-              Keyboard.press(keyConf[i][currentProfile].value[j] + 32);                      //Normal character + 32 (ascii Upercase to lowcase)
-              Serial.print("Press ");
-              Serial.println(keyConf[i][currentProfile].value[j] + 32);
-            }
-            else if (keyConf[i][currentProfile].value[j] <= 57 && keyConf[i][currentProfile].value[j] >= 48) //numbers
-            {
-              Keyboard.press(keyConf[i][currentProfile].value[j]); //Normal number
-            }
-            else
-            {
-              Keyboard.press(KeyboardKeycode(keyConf[i][currentProfile].value[j] - 100)); //Improved keyboard
-              Serial.print("Press ");
-              Serial.println(keyConf[i][currentProfile].value[j] - 100);
->>>>>>> 851f25ab2d54f9a64d2f87c943c28bcb58bf77d2
             }
 
             // while (digitalRead(keysPins[i]))
@@ -511,7 +452,6 @@ void loop()
 
           Serial.print("Encoder" + String(i) + ":UP");
 
-<<<<<<< HEAD
           if (encoderConfig[i][currentProfile].mode == 0 && encoderConfig[i][currentProfile].value[0] == 0) // If is a System Action AND master volume selected
           {
             Consumer.write(MEDIA_VOL_UP);
@@ -541,82 +481,56 @@ void loop()
           {
             Keyboard.write(encoderConfig[i][currentProfile].value[1]); // get the ascii code, and press the key
           }
-=======
-        if (encoderConfig[i][currentProfile].mode == 0 && encoderConfig[i][currentProfile].value[0] == 0) //If is a System Action AND master volume selected
-        {
-          Consumer.write(MEDIA_VOL_UP);
-        }
-        else if (encoderConfig[i][currentProfile].mode == 0 && encoderConfig[i][currentProfile].value[0] == 1) //If is a System Action AND master volume selected
-        {
-          Consumer.write(HID_CONSUMER_FAST_FORWARD);
-        }
-        else if (encoderConfig[i][currentProfile].mode == 1) //If is a key action
-        {
-          Keyboard.write(encoderConfig[i][currentProfile].value[0]); //get the ascii code, and press the key
->>>>>>> 851f25ab2d54f9a64d2f87c943c28bcb58bf77d2
         }
         encodersLastValue[i] = encodersPosition[i];
       }
-
-      if (!digitalRead(encoderKey1Pin)) // When encoder 1 key is pressed
-      {
-
-<<<<<<< HEAD
-        if (encoderPressed[1])
-        { // if the encoder is already pressed
-          // wait
-          Serial.println("Already press");
-        }
-        else
-        { // first press of the encoder
-          Serial.println("First press");
-          encoderPressed[1] = true;
-          encoderMillis = millis();
-        }
-        if (encoderMillis + 3000 < millis())
-        {
-          // 3 second after the begin of the press
-          Serial.println("3S --> profile set");
-          // set profile menu
-          selectProfileMode = true;
-=======
-        if (encoderConfig[i][currentProfile].mode == 0 && encoderConfig[i][currentProfile].value[0] == 0)
-        {
-          Consumer.write(MEDIA_VOL_DOWN);
-        }
-        else if (encoderConfig[i][currentProfile].mode == 0 && encoderConfig[i][currentProfile].value[0] == 1) //If is a System Action AND master volume selected
-        {
-          Consumer.write(HID_CONSUMER_REWIND);
-        }
-        else if (encoderConfig[i][currentProfile].mode == 1) //If is a key action
-        {
-          Keyboard.write(encoderConfig[i][currentProfile].value[1]); //get the ascii code, and press the key
->>>>>>> 851f25ab2d54f9a64d2f87c943c28bcb58bf77d2
-        }
-      }
-
-      if (digitalRead(encoderKey1Pin)) // When encoder 1 key is relese
-      {
-
-        // Do the action
-        encoderPressed[1] = false;
-      }
-    }
-
-    if (!digitalRead(encoderKey0Pin) && !digitalRead(encoderKey1Pin) && !digitalRead(encoderKey2Pin)) // install the software
-    {
-      Consumer.write(0x223); // open default web Browser
-      delay(200);
-      Keyboard.press(KEY_LEFT_CTRL); // focus the url with CTRL + L
-      Keyboard.press(KEY_L);
-      delay(10);
-      Keyboard.releaseAll();
-      delay(100);
-      Keyboard.print("https://github.com/xmow49/MacroPad-Software/releases"); // enter the url
-      delay(100);
-      Keyboard.write(KEY_ENTER); // go to the url
     }
   }
+
+  if (!digitalRead(encoderKey1Pin)) // When encoder 1 key is pressed
+  {
+
+    if (encoderPressed[1])
+    { // if the encoder is already pressed
+      // wait
+      Serial.println("Already press");
+    }
+    else
+    { // first press of the encoder
+      Serial.println("First press");
+      encoderPressed[1] = true;
+      encoderMillis = millis();
+    }
+    if (encoderMillis + 3000 < millis())
+    {
+      // 3 second after the begin of the press
+      Serial.println("3S --> profile set");
+      // set profile menu
+      selectProfileMode = true;
+    }
+  }
+
+  if (digitalRead(encoderKey1Pin)) // When encoder 1 key is relese
+  {
+
+    // Do the action
+    encoderPressed[1] = false;
+  }
+
+  if (!digitalRead(encoderKey0Pin) && !digitalRead(encoderKey1Pin) && !digitalRead(encoderKey2Pin)) // install the software
+  {
+    Consumer.write(0x223); // open default web Browser
+    delay(200);
+    Keyboard.press(KEY_LEFT_CTRL); // focus the url with CTRL + L
+    Keyboard.press(KEY_L);
+    delay(10);
+    Keyboard.releaseAll();
+    delay(100);
+    Keyboard.print("https://github.com/xmow49/MacroPad-Software/releases"); // enter the url
+    delay(100);
+    Keyboard.write(KEY_ENTER); // go to the url
+  }
+
   if (Serial.available() > 0)
   {
     serialMsg = Serial.readString();
@@ -641,17 +555,10 @@ void loop()
     }
     else if (command == "set-key")
     {
-<<<<<<< HEAD
       keyConf[arg[0]][currentProfile].mode = arg[1]; // Save Mode
       for (byte i = 0; i < 3; i++)                   // foreach value in the command
       {
         keyConf[arg[0]][currentProfile].value[i] = arg[i + 2]; // Save Values
-=======
-      keyConf[arg[0]][currentProfile].mode = arg[1]; //Save Mode
-      for (byte i = 0; i < 3; i++)   //foreach value in the command
-      {
-        keyConf[arg[0]][currentProfile].value[i] = arg[i + 2]; //Save Values
->>>>>>> 851f25ab2d54f9a64d2f87c943c28bcb58bf77d2
       }
 
       Serial.println("OK");
@@ -659,13 +566,8 @@ void loop()
 
     else if (command == "set-encoder") // Set encoder action
     {
-<<<<<<< HEAD
       encoderConfig[arg[0]][currentProfile].mode = arg[1]; // Get the mode and save it in the config
       for (byte i = 0; i < 3; i++)                         // for all values, save it in the config
-=======
-      encoderConfig[arg[0]][currentProfile].mode = arg[1]; //Get the mode and save it in the config
-      for (byte i = 0; i < 3; i++)         //for all values, save it in the config
->>>>>>> 851f25ab2d54f9a64d2f87c943c28bcb58bf77d2
       {
         encoderConfig[arg[0]][currentProfile].value[i] = arg[i + 2];
       }
