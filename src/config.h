@@ -25,3 +25,5 @@ const byte encoderKey2Pin = A3;
 //------------------------
 const byte SCREEN_WIDTH = 128;
 const byte SCREEN_HEIGHT = 32;
+//------------------------
+const byte profileCount = 6;
