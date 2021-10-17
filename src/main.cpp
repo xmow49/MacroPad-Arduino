@@ -48,9 +48,10 @@ unsigned long currentMillis;
 bool keyPressed[6];
 bool encoderPressed[3];         // current state of encoder key
 bool selectProfileMode = false; // If is true, all function are disabled, and keys do the profile selection
-bool macropadNormalMode = true; // normal mode
 
 volatile long encoderMillis;
+
+volatile long selectProfileMillis; // to blink the profile number
 
 byte currentProfile = 0;
 
@@ -266,17 +267,16 @@ void scrollText() // function to scoll the text into the display
 
 void centerText(String text) // Display the text in the center of the screen
 {
-  int str_len = text.length();
-  char char_array[str_len];
-  text.toCharArray(char_array, str_len);
-  size_t size = oled.strWidth(char_array);
+  int str_len = text.length();             // Get text size
+  char char_array[str_len];                // create a char array
+  text.toCharArray(char_array, str_len);   // convert text into the char array
+  size_t size = oled.strWidth(char_array); // Get the width of the text (in pixel)
 
-  oled.clear();
-  oled.setFont(FONT);
-  oled.set2X();
-
-  oled.setCursor((oled.displayWidth() - size) / 2, ((oled.displayRows() / 2) - 2)); // Center
-  oled.println(screenTxt);
+  oled.clear();                                                                          // clear the display
+  oled.setFont(FONT);                                                                    // set the default font
+  oled.set2X();                                                                          // set X2 size
+  oled.setCursor((oled.displayWidth() - size - 10) / 2, ((oled.displayRows() / 2) - 6)); // Center the text
+  oled.println(text);                                                                    // print the text
   textScrolling = false;
 }
 
@@ -287,19 +287,94 @@ void setRGB(byte r, byte g, byte b) // Set rgb value for LEDs
   analogWrite(ledB, b);
 }
 
-void selectProfile()
+void displayOnScreen(String txt) // display test on screen, check if is center text or scrolling text
 {
-  screenTxt = "Profil " + (currentProfile + 1);
+  Serial.println(txt);
+
+  screenTxt = txt;
   int str_len = screenTxt.length();
   char char_array[str_len];
   screenTxt.toCharArray(char_array, str_len);
   size_t size = oled.strWidth(char_array);
-
-  centerText(screenTxt);
-  textScrolling = false;
-
-  for (byte i = 0; i <= 5; i++)
+  Serial.println(size);
+  if (size > 128) // if
   {
+    oled.clear();
+    oled.tickerInit(&state, FONT, 1, true, 0, oled.displayWidth());
+    textScrolling = true;
+  }
+  else
+  {
+    centerText(screenTxt);
+    textScrolling = false;
+  }
+}
+
+bool profileBlinkState = true;
+
+void printCurrentProfile()
+{
+  String txt = "Profil " + String((currentProfile + 1));
+  displayOnScreen(txt);
+}
+
+void selectProfile()
+{ // When select profile mode is active
+
+  // Profile Number blink:
+  if (selectProfileMillis + 500 < millis())
+  { // wait 500ms
+
+    if (profileBlinkState)
+    {
+      profileBlinkState = false;
+      String txt = "Profil  ";
+      displayOnScreen(txt);
+    }
+    else
+    {
+      profileBlinkState = true;
+      String txt = "Profil " + String((currentProfile + 1));
+      displayOnScreen(txt);
+    }
+    selectProfileMillis = millis();
+  }
+
+  for (byte i = 0; i <= 5; i++) // foreach key
+  {
+    if (digitalRead(keysPins[i]))
+    {
+      currentProfile = i;
+      selectProfileMode = false;
+      String txt = "Profil " + String((currentProfile + 1));
+      displayOnScreen(txt);
+    }
+  }
+
+  if (encodersPosition[1] != encodersLastValue[1])
+  {
+    if (encodersPosition[1] < encodersLastValue[1])
+    { // clockWise
+      if (currentProfile >= 5)
+        currentProfile = 0;
+      else
+        currentProfile++;
+    }
+    else
+    {
+      if (currentProfile <= 0)
+        currentProfile = 5;
+      else
+        currentProfile--;
+    }
+    printCurrentProfile();
+    encodersLastValue[1] = encodersPosition[1];
+  }
+  if (!digitalRead(encoderKey1Pin))
+  {
+    selectProfileMode = false;
+    String txt = "Profil " + String((currentProfile + 1));
+    displayOnScreen(txt);
   }
 }
 
@@ -363,7 +438,7 @@ void loop()
   {
     selectProfile();
   }
-  else if (macropadNormalMode) //Default mode
+  else // Default mode
   {
 
     // Check Keys
@@ -494,6 +569,15 @@ void loop()
     { // if the encoder is already pressed
       // wait
       Serial.println("Already press");
+      if (encoderMillis + 2000 < millis() && selectProfileMode == false)
+      {
+        // 2 second after the begin of the press
+        Serial.println("2S --> profile set");
+        // set profile menu
+        selectProfileMode = true;
+        printCurrentProfile();
+        selectProfileMillis = millis();
+      }
     }
     else
     { // first press of the encoder
@@ -501,18 +585,10 @@ void loop()
       encoderPressed[1] = true;
       encoderMillis = millis();
     }
-    if (encoderMillis + 3000 < millis())
-    {
-      // 3 second after the begin of the press
-      Serial.println("3S --> profile set");
-      // set profile menu
-      selectProfileMode = true;
-    }
   }
 
   if (digitalRead(encoderKey1Pin)) // When encoder 1 key is relese
   {
-
     // Do the action
     encoderPressed[1] = false;
   }
@@ -520,7 +596,7 @@ void loop()
   if (!digitalRead(encoderKey0Pin) && !digitalRead(encoderKey1Pin) && !digitalRead(encoderKey2Pin)) // install the software
   {
     Consumer.write(0x223); // open default web Browser
-    delay(200);
+    delay(1000);
     Keyboard.press(KEY_LEFT_CTRL); // focus the url with CTRL + L
     Keyboard.press(KEY_L);
     delay(10);
@@ -577,25 +653,7 @@ void loop()
     {
       String txt = getArgs(serialMsg, '"', 1);
       txt.remove(txt.length() - 1);
-      screenTxt = txt;
-      int str_len = screenTxt.length();
-      char char_array[str_len];
-      screenTxt.toCharArray(char_array, str_len);
-      size_t size = oled.strWidth(char_array);
-
-      size = 150;
-      if (size > 128)
-      {
-        oled.clear();
-        oled.tickerInit(&state, FONT, 1, true, 0, oled.displayWidth());
-        textScrolling = true;
-      }
-      else
-      {
-        centerText(screenTxt);
-        textScrolling = false;
-      }
-
+      displayOnScreen(txt);
       Serial.println("OK");
     }
 
