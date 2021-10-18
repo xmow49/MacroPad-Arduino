@@ -26,4 +26,6 @@ const byte encoderKey2Pin = A3;
 const byte SCREEN_WIDTH = 128;
 const byte SCREEN_HEIGHT = 32;
 //------------------------
-const byte profileCount = 6;
+#define PROFILES_COUNT 6 // 6 profiles
+#define ENCODERS_COUNT 3 // 3 encoders
+#define KEYS_COUNT 6 // 6 keys

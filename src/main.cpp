@@ -13,7 +13,7 @@
 #define FONT Adafruit5x7
 
 bool textScrolling = 0;        // Store the state of text scrolling
-String screenTxt = "MacroPad"; // Text display on the screen
+String screenTxt; // Text display on the screen
 uint32_t tickTime = 0;         // for the scrolling text
 
 struct EncoderConf // Prepare encoders config
@@ -28,8 +28,16 @@ struct KeyConf // Prepare keys config
   short value[3];
 };
 
-EncoderConf encoderConfig[3][profileCount - 1]; // Create the encoder config with 3 encoders
-KeyConf keyConf[6][profileCount - 1];           // Create the key config with 6 keys
+struct RGBConf
+{
+  byte r;
+  byte g;
+  byte b;
+};
+
+EncoderConf encoderConfig[ENCODERS_COUNT][PROFILES_COUNT]; // Create the encoder config with 3 encoders
+KeyConf keyConf[KEYS_COUNT][PROFILES_COUNT];               // Create the key config with 6 keys
+RGBConf rgbConf[PROFILES_COUNT];                           // Create the rgb conf foreach profile
 
 volatile int encodersPosition[3] = {50, 50, 50}; // temp virtual position of encoders
 int encodersLastValue[3] = {50, 50, 50};         // Value of encoders
@@ -49,9 +57,9 @@ bool keyPressed[6];
 bool encoderPressed[3];         // current state of encoder key
 bool selectProfileMode = false; // If is true, all function are disabled, and keys do the profile selection
 
-volatile long encoderMillis;
+volatile unsigned long encoderMillis;
 
-volatile long selectProfileMillis; // to blink the profile number
+volatile unsigned long selectProfileMillis; // to blink the profile number
 
 byte currentProfile = 0;
 
@@ -130,120 +138,132 @@ void saveToEEPROM() // Save all config into the atmega eeprom
   Serial.println("-----Save to EEPROM-----");
 
   volatile short eepromAddress = 0;
-  for (byte i = 0; i < 6; i++)
+  for (byte profile = 0; profile <= 5; profile++)
   {
-    Serial.print("Key");
-    Serial.print(i);
-    Serial.print(" ");
+    String txt = "---- Profile " + String(profile) + " ----";
+    Serial.println(txt);
+    for (byte i = 0; i < 6; i++)
+    {
+      Serial.print("Key");
+      Serial.print(i);
+      Serial.print(" ");
 
-    Serial.print(keyConf[i][currentProfile].mode);
-    EEPROM.put(eepromAddress, keyConf[i][currentProfile].mode);
-    eepromAddress += sizeof(keyConf[i][currentProfile].mode);
+      Serial.print(keyConf[i][currentProfile].mode);
+      EEPROM.put(eepromAddress, keyConf[i][currentProfile].mode);
+      eepromAddress += sizeof(keyConf[i][currentProfile].mode);
 
-    Serial.print(":");
-    Serial.print(keyConf[i][currentProfile].value[0]);
-    EEPROM.put(eepromAddress, keyConf[i][currentProfile].value[0]);
-    eepromAddress += sizeof(keyConf[i][currentProfile].value[0]);
+      Serial.print(":");
+      Serial.print(keyConf[i][currentProfile].value[0]);
+      EEPROM.put(eepromAddress, keyConf[i][currentProfile].value[0]);
+      eepromAddress += sizeof(keyConf[i][currentProfile].value[0]);
 
-    Serial.print(",");
-    Serial.print(keyConf[i][currentProfile].value[1]);
-    EEPROM.put(eepromAddress, keyConf[i][currentProfile].value[1]);
-    eepromAddress += sizeof(keyConf[i][currentProfile].value[1]);
+      Serial.print(",");
+      Serial.print(keyConf[i][currentProfile].value[1]);
+      EEPROM.put(eepromAddress, keyConf[i][currentProfile].value[1]);
+      eepromAddress += sizeof(keyConf[i][currentProfile].value[1]);
 
-    Serial.print(",");
-    Serial.println(keyConf[i][currentProfile].value[2]);
-    EEPROM.put(eepromAddress, keyConf[i][currentProfile].value[2]);
-    eepromAddress += sizeof(keyConf[i][currentProfile].value[2]);
+      Serial.print(",");
+      Serial.println(keyConf[i][currentProfile].value[2]);
+      EEPROM.put(eepromAddress, keyConf[i][currentProfile].value[2]);
+      eepromAddress += sizeof(keyConf[i][currentProfile].value[2]);
+    }
+
+    for (byte i = 0; i < 3; i++)
+    {
+      Serial.print("Encoder");
+      Serial.print(i);
+      Serial.print(" ");
+
+      // Save Mode
+      Serial.print(encoderConfig[i][currentProfile].mode);
+      EEPROM.put(eepromAddress, encoderConfig[i][currentProfile].mode);
+      eepromAddress += sizeof(encoderConfig[i][currentProfile].mode);
+
+      // Save value 1
+      Serial.print(":");
+      Serial.print(encoderConfig[i][currentProfile].value[0]);
+      EEPROM.put(eepromAddress, encoderConfig[i][currentProfile].value[0]);
+      eepromAddress += sizeof(encoderConfig[i][currentProfile].value[0]);
+
+      // Save value 2
+      Serial.print(",");
+      Serial.print(encoderConfig[i][currentProfile].value[1]);
+      EEPROM.put(eepromAddress, encoderConfig[i][currentProfile].value[1]);
+      eepromAddress += sizeof(encoderConfig[i][currentProfile].value[1]);
+
+      // Save value 3
+      Serial.print(",");
+      Serial.println(encoderConfig[i][currentProfile].value[2]);
+      EEPROM.put(eepromAddress, encoderConfig[i][currentProfile].value[2]);
+      eepromAddress += sizeof(encoderConfig[i][currentProfile].value[2]);
+    }
   }
-
-  for (byte i = 0; i < 3; i++)
-  {
-    Serial.print("Encoder");
-    Serial.print(i);
-    Serial.print(" ");
-
-    // Save Mode
-    Serial.print(encoderConfig[i][currentProfile].mode);
-    EEPROM.put(eepromAddress, encoderConfig[i][currentProfile].mode);
-    eepromAddress += sizeof(encoderConfig[i][currentProfile].mode);
-
-    // Save value 1
-    Serial.print(":");
-    Serial.print(encoderConfig[i][currentProfile].value[0]);
-    EEPROM.put(eepromAddress, encoderConfig[i][currentProfile].value[0]);
-    eepromAddress += sizeof(encoderConfig[i][currentProfile].value[0]);
-
-    // Save value 2
-    Serial.print(",");
-    Serial.print(encoderConfig[i][currentProfile].value[1]);
-    EEPROM.put(eepromAddress, encoderConfig[i][currentProfile].value[1]);
-    eepromAddress += sizeof(encoderConfig[i][currentProfile].value[1]);
-
-    // Save value 3
-    Serial.print(",");
-    Serial.println(encoderConfig[i][currentProfile].value[2]);
-    EEPROM.put(eepromAddress, encoderConfig[i][currentProfile].value[2]);
-    eepromAddress += sizeof(encoderConfig[i][currentProfile].value[2]);
-  }
+  Serial.print("EEPROM size: ");
+  Serial.println(eepromAddress);
 }
 
 void readEEPROM() // Read all config from the atmega eeprom and store it into the temp config
 {
   Serial.println("-----Read from EEPROM-----");
   volatile short eepromAddress = 0;
-  for (byte i = 0; i < 6; i++)
+  for (byte profile = 0; profile <= 5; profile++)
   {
-    Serial.print("Key");
-    Serial.print(i);
-    Serial.print(" ");
+    String txt = "---- Profile " + String(profile) + " ----";
+    Serial.println(txt);
+    for (byte i = 0; i < 6; i++)
+    {
+      Serial.print("Key");
+      Serial.print(i);
+      Serial.print(" ");
 
-    EEPROM.get(eepromAddress, keyConf[i][currentProfile].mode);
-    Serial.print(keyConf[i][currentProfile].mode);
-    eepromAddress += sizeof(keyConf[i][currentProfile].mode);
+      EEPROM.get(eepromAddress, keyConf[i][profile].mode);
+      Serial.print(keyConf[i][profile].mode);
+      eepromAddress += sizeof(keyConf[i][profile].mode);
 
-    Serial.print(":");
-    EEPROM.get(eepromAddress, keyConf[i][currentProfile].value[0]);
-    Serial.print(keyConf[i][currentProfile].value[0]);
-    eepromAddress += sizeof(keyConf[i][currentProfile].value[0]);
+      Serial.print(":");
+      EEPROM.get(eepromAddress, keyConf[i][profile].value[0]);
+      Serial.print(keyConf[i][profile].value[0]);
+      eepromAddress += sizeof(keyConf[i][profile].value[0]);
 
-    Serial.print(",");
-    EEPROM.get(eepromAddress, keyConf[i][currentProfile].value[1]);
-    Serial.print(keyConf[i][currentProfile].value[1]);
-    eepromAddress += sizeof(keyConf[i][currentProfile].value[1]);
+      Serial.print(",");
+      EEPROM.get(eepromAddress, keyConf[i][profile].value[1]);
+      Serial.print(keyConf[i][profile].value[1]);
+      eepromAddress += sizeof(keyConf[i][profile].value[1]);
 
-    Serial.print(",");
-    EEPROM.get(eepromAddress, keyConf[i][currentProfile].value[2]);
-    Serial.println(keyConf[i][currentProfile].value[2]);
-    eepromAddress += sizeof(keyConf[i][currentProfile].value[2]);
-  }
-  for (byte i = 0; i < 3; i++)
-  {
-    Serial.print("Encoder");
-    Serial.print(i);
-    Serial.print(" ");
+      Serial.print(",");
+      EEPROM.get(eepromAddress, keyConf[i][profile].value[2]);
+      Serial.println(keyConf[i][profile].value[2]);
+      eepromAddress += sizeof(keyConf[i][profile].value[2]);
+    }
+    for (byte i = 0; i < 3; i++)
+    {
+      Serial.print("Encoder");
+      Serial.print(i);
+      Serial.print(" ");
 
-    // Get Mode
-    EEPROM.get(eepromAddress, encoderConfig[i][currentProfile].mode);
-    Serial.print(encoderConfig[i][currentProfile].mode);
-    eepromAddress += sizeof(encoderConfig[i][currentProfile].mode);
+      // Get Mode
+      EEPROM.get(eepromAddress, encoderConfig[i][profile].mode);
+      Serial.print(encoderConfig[i][profile].mode);
+      eepromAddress += sizeof(encoderConfig[i][profile].mode);
 
-    // Get Value 1
-    Serial.print(":");
-    EEPROM.get(eepromAddress, encoderConfig[i][currentProfile].value[0]);
-    Serial.print(encoderConfig[i][currentProfile].value[0]);
-    eepromAddress += sizeof(encoderConfig[i][currentProfile].value[0]);
+      // Get Value 1
+      Serial.print(":");
+      EEPROM.get(eepromAddress, encoderConfig[i][profile].value[0]);
+      Serial.print(encoderConfig[i][profile].value[0]);
+      eepromAddress += sizeof(encoderConfig[i][profile].value[0]);
 
-    // Get Value 2
-    Serial.print(":");
-    EEPROM.get(eepromAddress, encoderConfig[i][currentProfile].value[1]);
-    Serial.print(encoderConfig[i][currentProfile].value[1]);
-    eepromAddress += sizeof(encoderConfig[i][currentProfile].value[1]);
+      // Get Value 2
+      Serial.print(":");
+      EEPROM.get(eepromAddress, encoderConfig[i][profile].value[1]);
+      Serial.print(encoderConfig[i][profile].value[1]);
+      eepromAddress += sizeof(encoderConfig[i][profile].value[1]);
 
-    // Get Value 3
-    Serial.print(":");
-    EEPROM.get(eepromAddress, encoderConfig[i][currentProfile].value[3]);
-    Serial.print(encoderConfig[i][currentProfile].value[3]);
-    eepromAddress += sizeof(encoderConfig[i][currentProfile].value[3]);
+      // Get Value 3
+      Serial.print(":");
+      EEPROM.get(eepromAddress, encoderConfig[i][profile].value[3]);
+      Serial.println(encoderConfig[i][profile].value[3]);
+      eepromAddress += sizeof(encoderConfig[i][profile].value[3]);
+    }
   }
 }
 
@@ -282,9 +302,14 @@ void centerText(String text) // Display the text in the center of the screen
 
 void setRGB(byte r, byte g, byte b) // Set rgb value for LEDs
 {
+  // ---- Turn On LEDs with the analog value ----
   analogWrite(ledR, r);
   analogWrite(ledG, g);
   analogWrite(ledB, b);
+  // ---- Save Value to the conf ----
+  rgbConf[currentProfile].r = r;
+  rgbConf[currentProfile].g = g;
+  rgbConf[currentProfile].b = b;
 }
 
 void displayOnScreen(String txt) // display test on screen, check if is center text or scrolling text
@@ -296,8 +321,7 @@ void displayOnScreen(String txt) // display test on screen, check if is center t
   char char_array[str_len];
   screenTxt.toCharArray(char_array, str_len);
   size_t size = oled.strWidth(char_array);
-  Serial.println(size);
-  if (size > 128) // if
+  if (size > 128) // if the text width is larger than the screen, the text is scrolling
   {
     oled.clear();
     oled.tickerInit(&state, FONT, 1, true, 0, oled.displayWidth());
@@ -316,6 +340,15 @@ void printCurrentProfile()
 {
   String txt = "Profil " + String((currentProfile + 1));
   displayOnScreen(txt);
+}
+
+void setProfile(byte profile)
+{
+  currentProfile = profile;
+  selectProfileMode = false;
+  String txt = "Profil " + String((currentProfile + 1));
+  displayOnScreen(txt);
+  setRGB(rgbConf[currentProfile].r, rgbConf[currentProfile].g, rgbConf[currentProfile].b);
 }
 
 void selectProfile()
@@ -344,10 +377,7 @@ void selectProfile()
   {
     if (digitalRead(keysPins[i]))
     {
-      currentProfile = i;
-      selectProfileMode = false;
-      String txt = "Profil " + String((currentProfile + 1));
-      displayOnScreen(txt);
+      setProfile(i);
     }
   }
 
@@ -372,9 +402,7 @@ void selectProfile()
   }
   if (!digitalRead(encoderKey1Pin))
   {
-    selectProfileMode = false;
-    String txt = "Profil " + String((currentProfile + 1));
-    displayOnScreen(txt);
+    setProfile(currentProfile);
   }
 }
 
@@ -403,7 +431,7 @@ void setup()
   pinMode(ledG, OUTPUT);
   pinMode(ledB, OUTPUT);
 
-  delay(1000);
+  delay(500);
 
   setRGB(0, 255, 0);
 
@@ -424,24 +452,23 @@ void setup()
   Serial.println("Read EEPROM");
   readEEPROM();
 
-  delay(1000);
+  delay(500);
   setRGB(255, 0, 0);
 
-  centerText("Macropad");
-  centerText("Macropad");
-  delay(1000);
+  displayOnScreen("Macropad");
+  delay(500);
+  setRGB(0, 255, 0);
 }
 
 void loop()
 {
-  if (selectProfileMode)
+  if (selectProfileMode) // when the select profile mode is enable
   {
     selectProfile();
   }
   else // Default mode
   {
-
-    // Check Keys
+    // Foreach Keys check the state, and do the action if yes
     for (byte i = 0; i < 6; i++)
     {
       if (digitalRead(keysPins[i]))
@@ -454,7 +481,7 @@ void loop()
           Serial.print("Key" + String(i));
           if (keyConf[i][currentProfile].mode == 0) // System Action
           {
-            Consumer.write(keyConf[i][currentProfile].value[0]);
+            Consumer.write(ConsumerKeycode(keyConf[i][currentProfile].value[0]));
             // Serial.println(keyConf[i][currentProfile].value[0]);
             currentMillis = millis() / 100;
             // while (digitalRead(keysPins[i]))
@@ -568,20 +595,25 @@ void loop()
     if (encoderPressed[1])
     { // if the encoder is already pressed
       // wait
-      Serial.println("Already press");
+      //Serial.println("Already press");
       if (encoderMillis + 2000 < millis() && selectProfileMode == false)
       {
         // 2 second after the begin of the press
-        Serial.println("2S --> profile set");
+        //Serial.println("2S --> profile set");
         // set profile menu
         selectProfileMode = true;
         printCurrentProfile();
         selectProfileMillis = millis();
+        while (!digitalRead(encoderKey1Pin))
+        {
+          /* code */
+        }
+        
       }
     }
     else
     { // first press of the encoder
-      Serial.println("First press");
+      //Serial.println("First press");
       encoderPressed[1] = true;
       encoderMillis = millis();
     }
@@ -595,7 +627,7 @@ void loop()
 
   if (!digitalRead(encoderKey0Pin) && !digitalRead(encoderKey1Pin) && !digitalRead(encoderKey2Pin)) // install the software
   {
-    Consumer.write(0x223); // open default web Browser
+    Consumer.write(ConsumerKeycode(0x223)); // open default web Browser
     delay(1000);
     Keyboard.press(KEY_LEFT_CTRL); // focus the url with CTRL + L
     Keyboard.press(KEY_L);
@@ -659,31 +691,36 @@ void loop()
 
     else if (command == "get-config") // Get config command
     {
-      for (byte i = 0; i < 6; i++) // for all keys, get the config and display it
+      for (byte profile = 0; profile <= 5; profile++)
       {
-        Serial.print("Key");
-        Serial.print(i);
-        Serial.print(" ");
-        Serial.print(keyConf[i][currentProfile].mode);
-        Serial.print(" ");
-        Serial.print(keyConf[i][currentProfile].value[0]);
-        Serial.print(":");
-        Serial.print(keyConf[i][currentProfile].value[1]);
-        Serial.print(":");
-        Serial.println(keyConf[i][currentProfile].value[2]);
-      }
-      for (byte i = 0; i < 3; i++) // for all encoders, get the config and display it
-      {
-        Serial.print("Encoder");
-        Serial.print(i);
-        Serial.print(" ");
-        Serial.print(encoderConfig[i][currentProfile].mode);
-        Serial.print(" ");
-        Serial.print(encoderConfig[i][currentProfile].value[0]);
-        Serial.print(":");
-        Serial.print(encoderConfig[i][currentProfile].value[1]);
-        Serial.print(":");
-        Serial.println(encoderConfig[i][currentProfile].value[2]);
+        String txt = "---- Profile " + String(profile) + " ----";
+        Serial.println(txt);
+        for (byte i = 0; i < 6; i++) // for all keys, get the config and display it
+        {
+          Serial.print("Key");
+          Serial.print(i);
+          Serial.print(" ");
+          Serial.print(keyConf[i][profile].mode);
+          Serial.print(" ");
+          Serial.print(keyConf[i][profile].value[0]);
+          Serial.print(":");
+          Serial.print(keyConf[i][profile].value[1]);
+          Serial.print(":");
+          Serial.println(keyConf[i][profile].value[2]);
+        }
+        for (byte i = 0; i < 3; i++) // for all encoders, get the config and display it
+        {
+          Serial.print("Encoder");
+          Serial.print(i);
+          Serial.print(" ");
+          Serial.print(encoderConfig[i][profile].mode);
+          Serial.print(" ");
+          Serial.print(encoderConfig[i][profile].value[0]);
+          Serial.print(":");
+          Serial.print(encoderConfig[i][profile].value[1]);
+          Serial.print(":");
+          Serial.println(encoderConfig[i][profile].value[2]);
+        }
       }
     }
     else if (command == "save-config") // save-config command
@@ -695,28 +732,33 @@ void loop()
       readEEPROM();
     }
 
-    else if (command == "set-rgb")
+    else if (command == "set-rgb") // set-rgb <Red: 0 - 255> <Green: 0 - 255> <Blue: 0 - 255>
     {
-      setRGB(arg[1], arg[2], arg[3]);
+      setRGB(arg[0], arg[1], arg[2]); // Set RGB LED color to rgb value from the command :
       Serial.println("OK");
     }
-    else if (command == "reset-config")
+    else if (command == "reset-config") // reset all the config to 0
     {
-      for (byte i = 0; i < 3; i++)
+      for (byte profile = 0; profile <= 5; profile++)
       {
-        encoderConfig[i][currentProfile].mode = 0;
-        for (byte j = 0; j < 3; j++)
+        String txt = "---- Profile " + String(profile) + " ----";
+        Serial.println(txt);
+        for (byte i = 0; i < 3; i++)
         {
-          encoderConfig[i][currentProfile].value[j] = 0;
+          encoderConfig[i][profile].mode = 0;
+          for (byte j = 0; j < 3; j++)
+          {
+            encoderConfig[i][profile].value[j] = 0;
+          }
         }
-      }
 
-      for (byte i = 0; i < 6; i++)
-      {
-        keyConf[i][currentProfile].mode = 0;
-        for (byte j = 0; j < 3; j++)
+        for (byte i = 0; i < 6; i++)
         {
-          keyConf[i][currentProfile].value[j] = 0;
+          keyConf[i][profile].mode = 0;
+          for (byte j = 0; j < 3; j++)
+          {
+            keyConf[i][profile].value[j] = 0;
+          }
         }
       }
       Serial.println("OK");
