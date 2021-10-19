@@ -29,3 +29,5 @@ const byte SCREEN_HEIGHT = 32;
 #define PROFILES_COUNT 6 // 6 profiles
 #define ENCODERS_COUNT 3 // 3 encoders
 #define KEYS_COUNT 6 // 6 keys
+
+//#define VERBOSE
