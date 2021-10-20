@@ -300,6 +300,20 @@ void readEEPROM() // Read all config from the atmega eeprom and store it into th
     }
   }
 }
+void configFont()
+{
+  oled.setFont(&FreeSans12pt7b);    // set the font
+  oled.setTextSize(1);              // set the font size to 1
+  oled.setTextColor(SSD1306_WHITE); // Write text in white
+}
+
+void oledRaw(String txt, byte x, byte y)
+{
+  configFont();
+  oled.setCursor(x, y);
+  oled.print(txt);
+  oled.display();
+}
 
 void scrollText() // function to scoll the text into the display
 {
@@ -316,42 +330,53 @@ void scrollText() // function to scoll the text into the display
         textX = -textRtn;
 
       oled.clearDisplay();           // clear the display
-      oled.setTextWrap(false); //disable text warp on the right border
+      oled.setTextWrap(false);       // disable text warp on the right border
       oled.setFont(&FreeSans12pt7b); // set the default font
       oled.setTextSize(1);
       oled.setTextColor(SSD1306_WHITE);
       oled.setCursor(textX, ((SCREEN_HEIGHT / 2) + FONT_HEIGHT)); // Center the text
       oled.println(textOnDisplay);
-      
-      oled.display(); // print the text
 
+      oled.display(); // print the text
     }
   }
 }
 
 void centerText(String txt) // Display the text in the center of the screen
 {
-  size_t size = 12 * txt.length(); // oled.strWidth(char_array); // Get the width of the text (in pixel)
+  oled.clearDisplay(); // clear the display
+  int16_t x1;
+  int16_t y1;
+  uint16_t textW;
+  uint16_t textH;
 
-  oled.clearDisplay();           // clear the display
-  oled.setFont(&FreeSans12pt7b); // set the default font
-  oled.setTextSize(1);
-  oled.setTextColor(SSD1306_WHITE);
-  oled.setCursor((SCREEN_WIDTH - size - 10) / 2, ((SCREEN_HEIGHT / 2) + FONT_HEIGHT)); // Center the text
-  oled.println(txt);
-  oled.display(); // print the text
+  configFont();
+
+  oled.getTextBounds(txt, 0, 0, &x1, &y1, &textW, &textH);                 // get the size of the text and store it into textH and textW
+  oled.setCursor((SCREEN_WIDTH - textW) / 2, (SCREEN_HEIGHT + textH) / 2); // set the cursor in the good position
+
+  oled.println(txt); // print the text
+  oled.display();    // send to screen
   textScrolling = false;
 }
 
 void displayOnScreen(String txt) // display test on screen, check if is center text or scrolling text
 {
-  size_t size = 12 * txt.length(); // oled.strWidth(char_array);
+  int16_t x1;
+  int16_t y1;
+  uint16_t textW;
+  uint16_t textH;
+  oled.setFont(&FreeSans12pt7b);
+  oled.getTextBounds(txt, 0, 0, &x1, &y1, &textW, &textH); // get the size of the text and store it into textH and textW
 
-  if (size > SCREEN_WIDTH - 5) // if the text width is larger than the screen, the text is scrolling
+  // size_t size = 12 * txt.length();                         // oled.strWidth(char_array);
+
+  if (textW > SCREEN_WIDTH - 5) // if the text width is larger than the screen, the text is scrolling
   {
     textScrolling = true;
     textOnDisplay = txt;
     textX = 0;
+    tickTime = millis();
   }
   else
   {
@@ -397,14 +422,15 @@ void selectProfile()
     if (profileBlinkState)
     {
       profileBlinkState = false;
-      String txt = "Profil  ";
-      displayOnScreen(txt);
+      displayOnScreen("Profil  ");
+      //oledRaw("Profil  ", 30,25);
     }
     else
     {
       profileBlinkState = true;
       String txt = "Profil " + String((currentProfile + 1));
       displayOnScreen(txt);
+      //oledRaw(txt, 30,25);
     }
     selectProfileMillis = millis();
   }
@@ -435,6 +461,7 @@ void selectProfile()
     }
     printCurrentProfile();
     encodersLastValue[1] = encodersPosition[1];
+    selectProfileMillis = millis();
   }
   if (!digitalRead(encoderKey1Pin))
   {
@@ -484,9 +511,9 @@ void setup()
   Serial.println("Setup Interrupts");
 #endif
   //------------Interrupts----------
-  attachInterrupt(digitalPinToInterrupt(encoderA0Pin), encoder0, LOW);
-  attachInterrupt(digitalPinToInterrupt(encoderA1Pin), encoder1, LOW);
-  attachInterrupt(digitalPinToInterrupt(encoderA2Pin), encoder2, LOW);
+  //  attachInterrupt(digitalPinToInterrupt(encoderA0Pin), encoder0, LOW);
+  // attachInterrupt(digitalPinToInterrupt(encoderA1Pin), encoder1, LOW);
+  // attachInterrupt(digitalPinToInterrupt(encoderA2Pin), encoder2, LOW);
 
 #ifdef VERBOSE
   Serial.println("Setup HID");
@@ -517,8 +544,32 @@ void setup()
   setRGB(0, 255, 0);
 }
 
+bool encoderAState[3];
+
 void loop()
 {
+
+  for (byte i = 0; i < 3; i++) //forech encoder, check if thre is a nex position and change call the fonction
+  {
+    if (digitalRead(encodersPins[i * 3]) == 0)
+    {
+      if (encoderAState[i])
+      {
+        // alredy press
+      }
+      else
+      {
+        // first press
+        encoder(i);
+        encoderAState[i] = true;
+      }
+    }
+    else
+    {
+      encoderAState[i] = false;
+    }
+  }
+
   if (selectProfileMode) // when the select profile mode is enable
   {
     selectProfile();
