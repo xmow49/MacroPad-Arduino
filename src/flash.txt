@@ -16,3 +16,32 @@ Flash: [=======   ]  70.9% (used 20324 bytes from 28672 bytes)
 
 RAM:   [=====     ]  46.3% (used 1185 bytes from 2560 bytes)
 Flash: [=======   ]  69.3% (used 19872 bytes from 28672 bytes)
+
+
+
+void testscrolltext(void) {
+  display.clearDisplay();
+
+  display.setTextSize(2); // Draw 2X-scale text
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(10, 0);
+  display.println(F("scroll"));
+  display.display();      // Show initial text
+  delay(100);
+
+  // Scroll in various directions, pausing in-between:
+  display.startscrollright(0x00, 0x0F);
+  delay(2000);
+  display.stopscroll();
+  delay(1000);
+  display.startscrollleft(0x00, 0x0F);
+  delay(2000);
+  display.stopscroll();
+  delay(1000);
+  display.startscrolldiagright(0x00, 0x07);
+  delay(2000);
+  display.startscrolldiagleft(0x00, 0x07);
+  delay(2000);
+  display.stopscroll();
+  delay(1000);
+}

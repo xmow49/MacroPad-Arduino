@@ -34,5 +34,7 @@ const byte SCREEN_HEIGHT = 32;
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 32 // OLED display height, in pixels
 
+#define FONT_HEIGHT 12
+#define FONT_WIDTH 7
 
 //#define VERBOSE

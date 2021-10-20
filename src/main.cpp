@@ -6,15 +6,15 @@
 #include <EEPROM.h>
 
 #include <Wire.h>
-#include <SSD1306Ascii.h>
-#include <SSD1306AsciiAvrI2c.h>
+//#include <SSD1306Ascii.h>
+//#include <SSD1306AsciiAvrI2c.h>
 
 #include <Adafruit_SSD1306.h>
+#include <Fonts/FreeSans12pt7b.h>
 
 
-
-#define FONT2 Cooper19
-#define FONT Adafruit5x7
+//#define FONT2 Cooper19
+//#define FONT Adafruit5x7
 
 bool textScrolling = 0; // Store the state of text scrolling
 String screenTxt;       // Text display on the screen
@@ -51,13 +51,12 @@ String serialMsg; // String who store the serial message
 const byte keysPins[6] = {key0Pin, key1Pin, key2Pin, key3Pin, key4Pin, key5Pin};                                                                                   // Pins of all keys
 const byte encodersPins[9] = {encoderA0Pin, encoderB0Pin, encoderKey0Pin, encoderA1Pin, encoderB1Pin, encoderKey1Pin, encoderA2Pin, encoderB2Pin, encoderKey2Pin}; // Pins of all encodes
 
-SSD1306AsciiAvrI2c oled; // This is the Oled display
-TickerState state;       // Ticker to run text scrooling
+
+//SSD1306AsciiAvrI2c oled; // This is the Oled display
+//TickerState state;       // Ticker to run text scrooling
 
 
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-
-
+Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 
 const byte repeatDelay = 5;
@@ -307,35 +306,41 @@ void readEEPROM() // Read all config from the atmega eeprom and store it into th
 
 void scrollText() // function to scoll the text into the display
 {
-  if (tickTime <= millis())
+  if (tickTime <= millis()) //every 30 ms
   {
     tickTime = millis() + 30;
 
     if (textScrolling)
     {
-      int8_t rtn = oled.tickerTick(&state);
+      /*int8_t rtn = oled.tickerTick(&state);
 
       if (rtn <= 0)
       {
         oled.tickerText(&state, screenTxt);
-      }
+      }*/
+
+
     }
   }
 }
+
 
 void centerText(String text) // Display the text in the center of the screen
 {
   int str_len = text.length();             // Get text size
   char char_array[str_len];                // create a char array
   text.toCharArray(char_array, str_len);   // convert text into the char array
-  size_t size = oled.strWidth(char_array); // Get the width of the text (in pixel)
+  size_t size = 12 * screenTxt.length();//oled.strWidth(char_array); // Get the width of the text (in pixel)
 
-  oled.clear();                                                                          // clear the display
-  oled.setFont(FONT);                                                                    // set the default font
-  oled.set2X();                                                                          // set X2 size
-  oled.setCursor((oled.displayWidth() - size - 10) / 2, ((oled.displayRows() / 2) - 6)); // Center the text
-  oled.println(text);                                                                    // print the text
+  oled.clearDisplay();                                                                          // clear the display
+  oled.setFont(&FreeSans12pt7b);                                                                    // set the default font
+  oled.setTextSize(1); 
+  oled.setTextColor(SSD1306_WHITE);                                                                  // set X2 size
+  oled.setCursor((SCREEN_WIDTH - size - 10) / 2, ((SCREEN_HEIGHT / 2) + FONT_HEIGHT)); // Center the text
+  oled.println(text);    
+  oled.display();                                                                // print the text
   textScrolling = false;
+  
 }
 
 void setRGB(byte r, byte g, byte b) // Set rgb value for LEDs
@@ -356,11 +361,11 @@ void displayOnScreen(String txt) // display test on screen, check if is center t
   int str_len = screenTxt.length();
   char char_array[str_len];
   screenTxt.toCharArray(char_array, str_len);
-  size_t size = oled.strWidth(char_array);
+  size_t size = 12 * screenTxt.length(); //oled.strWidth(char_array);
   if (size > 128) // if the text width is larger than the screen, the text is scrolling
   {
-    oled.clear();
-    oled.tickerInit(&state, FONT, 1, true, 0, oled.displayWidth());
+    oled.clearDisplay();
+    //oled.tickerInit(&state, FONT, 1, true, 0, oled.displayWidth());
     textScrolling = true;
   }
   else
@@ -498,7 +503,10 @@ void setup()
 #endif
 
   Wire.begin();
-  oled.begin(&Adafruit128x32, 0x3C);
+  //oled.begin(&Adafruit128x32, 0x3C);
+  oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  oled.clearDisplay();
+  oled.display();
 
 #ifdef VERBOSE
   Serial.println("Read EEPROM");
