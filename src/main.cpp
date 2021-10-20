@@ -12,13 +12,14 @@
 #include <Adafruit_SSD1306.h>
 #include <Fonts/FreeSans12pt7b.h>
 
-
 //#define FONT2 Cooper19
 //#define FONT Adafruit5x7
 
 bool textScrolling = 0; // Store the state of text scrolling
-String screenTxt;       // Text display on the screen
-uint32_t tickTime = 0;  // for the scrolling text
+short textX;
+String textOnDisplay;
+
+uint32_t tickTime = 0; // for the scrolling text
 
 struct EncoderConf // Prepare encoders configstructure
 {
@@ -51,13 +52,10 @@ String serialMsg; // String who store the serial message
 const byte keysPins[6] = {key0Pin, key1Pin, key2Pin, key3Pin, key4Pin, key5Pin};                                                                                   // Pins of all keys
 const byte encodersPins[9] = {encoderA0Pin, encoderB0Pin, encoderKey0Pin, encoderA1Pin, encoderB1Pin, encoderKey1Pin, encoderA2Pin, encoderB2Pin, encoderKey2Pin}; // Pins of all encodes
 
-
-//SSD1306AsciiAvrI2c oled; // This is the Oled display
-//TickerState state;       // Ticker to run text scrooling
-
+// SSD1306AsciiAvrI2c oled; // This is the Oled display
+// TickerState state;       // Ticker to run text scrooling
 
 Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-
 
 const byte repeatDelay = 5;
 unsigned long currentMillis;
@@ -65,7 +63,6 @@ unsigned long currentMillis;
 bool keyPressed[KEYS_COUNT];         // current state of key
 bool encoderPressed[ENCODERS_COUNT]; // current state of encoder key
 bool selectProfileMode = false;      // If is true, all function are disabled, and keys do the profile selection
-
 
 // ---- Millis for timer ----
 volatile unsigned long encoderMillis;
@@ -306,41 +303,60 @@ void readEEPROM() // Read all config from the atmega eeprom and store it into th
 
 void scrollText() // function to scoll the text into the display
 {
-  if (tickTime <= millis()) //every 30 ms
+  if (tickTime <= millis()) // every 30 ms
   {
     tickTime = millis() + 30;
 
     if (textScrolling)
     {
-      /*int8_t rtn = oled.tickerTick(&state);
+      short textRtn = -12 * textOnDisplay.length();
+      if (textX > textRtn)
+        textX -= 1;
+      else
+        textX = -textRtn;
 
-      if (rtn <= 0)
-      {
-        oled.tickerText(&state, screenTxt);
-      }*/
-
+      oled.clearDisplay();           // clear the display
+      oled.setTextWrap(false); //disable text warp on the right border
+      oled.setFont(&FreeSans12pt7b); // set the default font
+      oled.setTextSize(1);
+      oled.setTextColor(SSD1306_WHITE);
+      oled.setCursor(textX, ((SCREEN_HEIGHT / 2) + FONT_HEIGHT)); // Center the text
+      oled.println(textOnDisplay);
+      
+      oled.display(); // print the text
 
     }
   }
 }
 
-
-void centerText(String text) // Display the text in the center of the screen
+void centerText(String txt) // Display the text in the center of the screen
 {
-  int str_len = text.length();             // Get text size
-  char char_array[str_len];                // create a char array
-  text.toCharArray(char_array, str_len);   // convert text into the char array
-  size_t size = 12 * screenTxt.length();//oled.strWidth(char_array); // Get the width of the text (in pixel)
+  size_t size = 12 * txt.length(); // oled.strWidth(char_array); // Get the width of the text (in pixel)
 
-  oled.clearDisplay();                                                                          // clear the display
-  oled.setFont(&FreeSans12pt7b);                                                                    // set the default font
-  oled.setTextSize(1); 
-  oled.setTextColor(SSD1306_WHITE);                                                                  // set X2 size
+  oled.clearDisplay();           // clear the display
+  oled.setFont(&FreeSans12pt7b); // set the default font
+  oled.setTextSize(1);
+  oled.setTextColor(SSD1306_WHITE);
   oled.setCursor((SCREEN_WIDTH - size - 10) / 2, ((SCREEN_HEIGHT / 2) + FONT_HEIGHT)); // Center the text
-  oled.println(text);    
-  oled.display();                                                                // print the text
+  oled.println(txt);
+  oled.display(); // print the text
   textScrolling = false;
-  
+}
+
+void displayOnScreen(String txt) // display test on screen, check if is center text or scrolling text
+{
+  size_t size = 12 * txt.length(); // oled.strWidth(char_array);
+
+  if (size > SCREEN_WIDTH - 5) // if the text width is larger than the screen, the text is scrolling
+  {
+    textScrolling = true;
+    textOnDisplay = txt;
+    textX = 0;
+  }
+  else
+  {
+    centerText(txt);
+  }
 }
 
 void setRGB(byte r, byte g, byte b) // Set rgb value for LEDs
@@ -354,27 +370,6 @@ void setRGB(byte r, byte g, byte b) // Set rgb value for LEDs
   rgbConf[currentProfile].g = g;
   rgbConf[currentProfile].b = b;
 }
-
-void displayOnScreen(String txt) // display test on screen, check if is center text or scrolling text
-{
-  screenTxt = txt;
-  int str_len = screenTxt.length();
-  char char_array[str_len];
-  screenTxt.toCharArray(char_array, str_len);
-  size_t size = 12 * screenTxt.length(); //oled.strWidth(char_array);
-  if (size > 128) // if the text width is larger than the screen, the text is scrolling
-  {
-    oled.clearDisplay();
-    //oled.tickerInit(&state, FONT, 1, true, 0, oled.displayWidth());
-    textScrolling = true;
-  }
-  else
-  {
-    centerText(screenTxt);
-    textScrolling = false;
-  }
-}
-
 bool profileBlinkState = true;
 
 void printCurrentProfile()
@@ -503,7 +498,7 @@ void setup()
 #endif
 
   Wire.begin();
-  //oled.begin(&Adafruit128x32, 0x3C);
+  // oled.begin(&Adafruit128x32, 0x3C);
   oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   oled.clearDisplay();
   oled.display();
@@ -841,5 +836,4 @@ void loop()
   }
 
   scrollText();
-  delay(10);
 }
