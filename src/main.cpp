@@ -9,6 +9,10 @@
 #include <SSD1306Ascii.h>
 #include <SSD1306AsciiAvrI2c.h>
 
+#include <Adafruit_SSD1306.h>
+
+
+
 #define FONT2 Cooper19
 #define FONT Adafruit5x7
 
@@ -16,19 +20,19 @@ bool textScrolling = 0; // Store the state of text scrolling
 String screenTxt;       // Text display on the screen
 uint32_t tickTime = 0;  // for the scrolling text
 
-struct EncoderConf // Prepare encoders config
+struct EncoderConf // Prepare encoders configstructure
 {
   byte mode;
   short value[3];
 };
 
-struct KeyConf // Prepare keys config
+struct KeyConf // Prepare keys config structure
 {
   byte mode;
   short value[3];
 };
 
-struct RGBConf
+struct RGBConf // Prepare RGB config structure
 {
   byte r;
   byte g;
@@ -50,6 +54,12 @@ const byte encodersPins[9] = {encoderA0Pin, encoderB0Pin, encoderKey0Pin, encode
 SSD1306AsciiAvrI2c oled; // This is the Oled display
 TickerState state;       // Ticker to run text scrooling
 
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+
+
+
 const byte repeatDelay = 5;
 unsigned long currentMillis;
 
@@ -57,11 +67,12 @@ bool keyPressed[KEYS_COUNT];         // current state of key
 bool encoderPressed[ENCODERS_COUNT]; // current state of encoder key
 bool selectProfileMode = false;      // If is true, all function are disabled, and keys do the profile selection
 
-volatile unsigned long encoderMillis;
 
+// ---- Millis for timer ----
+volatile unsigned long encoderMillis;
 volatile unsigned long selectProfileMillis; // to blink the profile number
 
-byte currentProfile = 0;
+byte currentProfile = 0; // Current selected profile is 0 by default
 
 String getArgs(String data, char separator, short index)
 {
@@ -521,11 +532,10 @@ void loop()
         }
         else
         {
-          Serial.print("Key" + String(i));
+          Serial.println("Key" + String(i));
           if (keyConf[i][currentProfile].mode == 0) // System Action
           {
             Consumer.write(ConsumerKeycode(keyConf[i][currentProfile].value[0]));
-            // Serial.println(keyConf[i][currentProfile].value[0]);
             currentMillis = millis() / 100;
             // while (digitalRead(keysPins[i]))
             // {
@@ -547,14 +557,18 @@ void loop()
               else if (keyConf[i][currentProfile].value[j] <= 32 && keyConf[i][currentProfile].value[j] >= 8) // function key (spaces, shift, etc)
               {
                 Keyboard.press(keyConf[i][currentProfile].value[j]);
+#ifdef VERBOSE
                 Serial.print("Press ");
                 Serial.println(keyConf[i][currentProfile].value[j]);
+#endif
               }
               else if (keyConf[i][currentProfile].value[j] <= 90 && keyConf[i][currentProfile].value[j] >= 65) // alaphabet
               {                                                                                                // ascii normal code exept '<' (60)
                 Keyboard.press(keyConf[i][currentProfile].value[j] + 32);                                      // Normal character + 32 (ascii Upercase to lowcase)
+#ifdef VERBOSE
                 Serial.print("Press ");
                 Serial.println(keyConf[i][currentProfile].value[j] + 32);
+#endif
               }
               else if (keyConf[i][currentProfile].value[j] <= 57 && keyConf[i][currentProfile].value[j] >= 48) // numbers
               {
@@ -563,8 +577,10 @@ void loop()
               else
               {
                 Keyboard.press(KeyboardKeycode(keyConf[i][currentProfile].value[j] - 100)); // Improved keyboard
+#ifdef VERBOSE
                 Serial.print("Press ");
                 Serial.println(keyConf[i][currentProfile].value[j] - 100);
+#endif
               }
             }
 
@@ -594,9 +610,9 @@ void loop()
       {
         if (encodersPosition[i] < encodersLastValue[i]) // Encoder ClockWise Turn
         {
-
+#ifdef VERBOSE
           Serial.print("Encoder" + String(i) + ":UP");
-
+#endif
           if (encoderConfig[i][currentProfile].mode == 0 && encoderConfig[i][currentProfile].value[0] == 0) // If is a System Action AND master volume selected
           {
             Consumer.write(MEDIA_VOL_UP);
@@ -612,8 +628,9 @@ void loop()
         }
         else // Encoder Anti-ClockWise Turn
         {
+#ifdef VERBOSE
           Serial.print("Encoder" + String(i) + ":DOWN");
-
+#endif
           if (encoderConfig[i][currentProfile].mode == 0 && encoderConfig[i][currentProfile].value[0] == 0)
           {
             Consumer.write(MEDIA_VOL_DOWN);
@@ -735,8 +752,10 @@ void loop()
     {
       for (byte profile = 0; profile <= 5; profile++)
       {
+#ifdef VERBOSE
         String txt = "---- Profile " + String(profile) + " ----";
         Serial.println(txt);
+#endif
         for (byte i = 0; i < 6; i++) // for all keys, get the config and display it
         {
           Serial.print("Key");
@@ -783,7 +802,7 @@ void loop()
     {
       for (byte profile = 0; profile <= 5; profile++)
       {
-        String txt = "---- Profile " + String(profile) + " ----";
+        String txt = "Profile " + String(profile) + " :";
         Serial.println(txt);
         for (byte i = 0; i < 3; i++)
         {
@@ -809,7 +828,7 @@ void loop()
     else
     {
       Serial.print(command);
-      Serial.println(": command not found");
+      Serial.println(": error");
     }
   }
 

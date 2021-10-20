@@ -30,4 +30,9 @@ const byte SCREEN_HEIGHT = 32;
 #define ENCODERS_COUNT 3 // 3 encoders
 #define KEYS_COUNT 6 // 6 keys
 
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 32 // OLED display height, in pixels
+
+
 //#define VERBOSE
