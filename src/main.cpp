@@ -194,10 +194,9 @@ void saveToEEPROM() // Save all config into the atmega eeprom
       eepromAddress += sizeof(encoderConfig[i][currentProfile].value[2]);
     }
   }
-#ifdef VERBOSE
   Serial.print("EEPROM size: ");
   Serial.println(eepromAddress);
-#endif
+  Serial.println("OK");
 }
 
 void readEEPROM() // Read all config from the atmega eeprom and store it into the temp config
@@ -277,19 +276,12 @@ void readEEPROM() // Read all config from the atmega eeprom and store it into th
     }
   }
 }
+
 void configFont()
 {
   oled.setFont(&FreeSans12pt7b);    // set the font
   oled.setTextSize(1);              // set the font size to 1
   oled.setTextColor(SSD1306_WHITE); // Write text in white
-}
-
-void oledRaw(String txt, byte x, byte y)
-{
-  configFont();
-  oled.setCursor(x, y);
-  oled.print(txt);
-  oled.display();
 }
 
 void scrollText() // function to scoll the text into the display
@@ -374,8 +366,12 @@ bool profileBlinkState = true;
 
 void printCurrentProfile()
 {
-  String txt = "Profil " + String((currentProfile + 1));
-  displayOnScreen(txt);
+  oled.clearDisplay();
+  oled.setCursor(31, 25);
+  oled.println("Profil");
+  oled.setCursor(90, 25);
+  oled.println(String((currentProfile + 1)));
+  oled.display();
 }
 
 void setProfile(byte profile)
@@ -387,26 +383,30 @@ void setProfile(byte profile)
   setRGB(rgbConf[currentProfile].r, rgbConf[currentProfile].g, rgbConf[currentProfile].b);
 }
 
+void clearProfileNumber()
+{
+  oled.writeFillRect(90, 9, 12, 18, BLACK);
+}
+
 void selectProfile()
 { // When select profile mode is active
-
+  static String strProfile;
   // Profile Number blink:
   if (selectProfileMillis <= millis())
   { // wait 500ms
+    oled.setCursor(90, 25);
     selectProfileMillis = millis() + 500;
+    clearProfileNumber();
     if (profileBlinkState)
     {
       profileBlinkState = false;
-      displayOnScreen("Profil  ");
-      // oledRaw("Profil  ", 30,25);
+      oled.print(strProfile);
     }
     else
     {
       profileBlinkState = true;
-      String txt = "Profil " + String((currentProfile + 1));
-      displayOnScreen(txt);
-      // oledRaw(txt, 30,25);
     }
+    oled.display();
   }
 
   for (byte i = 0; i <= 5; i++) // foreach key
@@ -433,9 +433,14 @@ void selectProfile()
       else
         currentProfile--;
     }
-    printCurrentProfile();
+    strProfile = String((currentProfile + 1));
+    oled.setCursor(90, 25);
+    clearProfileNumber();
+    oled.print(strProfile);
+
     encodersLastValue[1] = encodersPosition[1];
-    selectProfileMillis = millis();
+    selectProfileMillis = millis() + 500;
+    oled.display();
   }
   if (!digitalRead(encoderKey1Pin))
   {
@@ -445,6 +450,7 @@ void selectProfile()
 
 void setup()
 {
+
   Serial.begin(9600);
 #ifdef VERBOSE
   Serial.println("Start");
@@ -513,7 +519,7 @@ void setup()
   delay(500);
   setRGB(255, 0, 0);
 
-  displayOnScreen("Macropad");
+  displayOnScreen("Macropad ");
   delay(500);
   setRGB(0, 255, 0);
 
@@ -677,41 +683,44 @@ void loop()
         encodersLastValue[i] = encodersPosition[i];
       }
     }
-  }
 
-  if (!digitalRead(encoderKey1Pin)) // When encoder 1 key is pressed
-  {
+    if (!digitalRead(encoderKey1Pin)) // When encoder 1 key is pressed
+    {
 
-    if (encoderPressed[1])
-    { // if the encoder is already pressed
-      // wait
-      // Serial.println("Already press");
-      if (encoderMillis <= millis() && selectProfileMode == false)
-      {
-        // 2 second after the begin of the press
-        // Serial.println("2S --> profile set");
-        // set profile menu
-        selectProfileMode = true;
-        printCurrentProfile();
-        selectProfileMillis = millis() + 2000;
-        while (!digitalRead(encoderKey1Pin))
+      if (encoderPressed[1])
+      { // if the encoder is already pressed
+        // wait
+        // Serial.println("Already press");
+        if (encoderMillis <= millis() && selectProfileMode == false)
         {
-          /* code */
+          // 2 second after the begin of the press
+          // Serial.println("2S --> profile set");
+          // set profile menu
+          selectProfileMode = true;
+          printCurrentProfile();
+          oled.drawBitmap(0, 10, profile_left, PROFILE_H, PROFILE_W, WHITE);
+          oled.drawBitmap(119, 10, profile_right, PROFILE_H, PROFILE_W, WHITE);
+          oled.display();
+          selectProfileMillis = millis();
+          while (!digitalRead(encoderKey1Pin))
+          {
+            /* code */
+          }
         }
       }
+      else
+      { // first press of the encoder
+        // Serial.println("First press");
+        encoderPressed[1] = true;
+        encoderMillis = millis() + 1500;
+      }
     }
-    else
-    { // first press of the encoder
-      // Serial.println("First press");
-      encoderPressed[1] = true;
-      encoderMillis = millis();
-    }
-  }
 
-  if (digitalRead(encoderKey1Pin)) // When encoder 1 key is relese
-  {
-    // Do the action
-    encoderPressed[1] = false;
+    if (digitalRead(encoderKey1Pin)) // When encoder 1 key is relese
+    {
+      // Do the action
+      encoderPressed[1] = false;
+    }
   }
 
   if (!digitalRead(encoderKey0Pin) && !digitalRead(encoderKey1Pin) && !digitalRead(encoderKey2Pin)) // install the software
