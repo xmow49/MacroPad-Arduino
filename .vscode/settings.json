@@ -1,4 +1,7 @@
 {
     "C_Cpp.errorSquiggles": "Disabled",
-    "python.pythonPath": "C:\\Users\\Dorian\\.windows-build-tools\\python27\\python.exe"
+    "python.pythonPath": "C:\\Users\\Dorian\\.windows-build-tools\\python27\\python.exe",
+    "files.associations": {
+        "*.yaml": "home-assistant"
+    }
 }

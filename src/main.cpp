@@ -1,25 +1,19 @@
 #include <Arduino.h>
-#include <config.h>
+#include <config.h> //config file
+
 #define HID_CUSTOM_LAYOUT
 #define LAYOUT_FRENCH
-#include <HID-Project.h>
+#include <HID-Project.h> //Keybord ++
 #include <EEPROM.h>
 
+// --- Oled Display ---
 #include <Wire.h>
-//#include <SSD1306Ascii.h>
-//#include <SSD1306AsciiAvrI2c.h>
-
 #include <Adafruit_SSD1306.h>
 #include <Fonts/FreeSans12pt7b.h>
 
-//#define FONT2 Cooper19
-//#define FONT Adafruit5x7
-
-bool textScrolling = 0; // Store the state of text scrolling
-short textX;
-String textOnDisplay;
-
-uint32_t tickTime = 0; // for the scrolling text
+bool textScrolling = false; // Store the state of text scrolling
+short textX;                // Store the current X position of the text
+String textOnDisplay;       // Store the current scolling text
 
 struct EncoderConf // Prepare encoders configstructure
 {
@@ -44,38 +38,36 @@ EncoderConf encoderConfig[ENCODERS_COUNT][PROFILES_COUNT]; // Create the encoder
 KeyConf keyConf[KEYS_COUNT][PROFILES_COUNT];               // Create the key config with 6 keys
 RGBConf rgbConf[PROFILES_COUNT];                           // Create the rgb conf foreach profile
 
-volatile int encodersPosition[3] = {50, 50, 50}; // temp virtual position of encoders
-int encodersLastValue[3] = {50, 50, 50};         // Value of encoders
+int encodersPosition[3] = {50, 50, 50};  // temp virtual position of encoders
+int encodersLastValue[3] = {50, 50, 50}; // Value of encoders
 
-String serialMsg; // String who store the serial message
+String serialMsg; // Store the tmp serial message
 
 const byte keysPins[6] = {key0Pin, key1Pin, key2Pin, key3Pin, key4Pin, key5Pin};                                                                                   // Pins of all keys
 const byte encodersPins[9] = {encoderA0Pin, encoderB0Pin, encoderKey0Pin, encoderA1Pin, encoderB1Pin, encoderKey1Pin, encoderA2Pin, encoderB2Pin, encoderKey2Pin}; // Pins of all encodes
 
-// SSD1306AsciiAvrI2c oled; // This is the Oled display
-// TickerState state;       // Ticker to run text scrooling
-
-Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-
-const byte repeatDelay = 5;
-unsigned long currentMillis;
+Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1); // config the display
 
 bool keyPressed[KEYS_COUNT];         // current state of key
 bool encoderPressed[ENCODERS_COUNT]; // current state of encoder key
 bool selectProfileMode = false;      // If is true, all function are disabled, and keys do the profile selection
 
 // ---- Millis for timer ----
-volatile unsigned long encoderMillis;
-volatile unsigned long selectProfileMillis; // to blink the profile number
+unsigned long encoderMillis;
+unsigned long selectProfileMillis; // to blink the profile number
 
 byte currentProfile = 0; // Current selected profile is 0 by default
+
+const byte repeatDelay = 5;  //
+unsigned long currentMillis; // ----------------------------a renomer
+unsigned long tickTime;      // for the scrolling text
 
 String getArgs(String data, char separator, short index)
 {
   // This Function separate String with special characters
-  volatile short found = 0;
-  volatile short strIndex[] = {0, -1};
-  volatile short maxIndex = data.length() - 1;
+  short found = 0;
+  short strIndex[] = {0, -1};
+  short maxIndex = data.length() - 1;
 
   for (int i = 0; i <= maxIndex && found <= index; i++)
   {
@@ -95,7 +87,7 @@ void encoder(byte encoder) // function for the encoder interrupt
   static unsigned long lastInterruptTime = 0;
   unsigned long interruptTime = millis();
 
-  volatile byte pin;
+  byte pin;
   switch (encoder)
   {
   case 0:
@@ -125,21 +117,6 @@ void encoder(byte encoder) // function for the encoder interrupt
   lastInterruptTime = interruptTime;
 }
 
-void encoder0() // function call by the interrupt, and redirect to the main encoder fonction
-{
-  encoder(0);
-}
-
-void encoder1() // function call by the interrupt, and redirect to the main encoder fonction
-{
-  encoder(1);
-}
-
-void encoder2() // function call by the interrupt, and redirect to the main encoder fonction
-{
-  encoder(2);
-}
-
 void saveToEEPROM() // Save all config into the atmega eeprom
 {
 
@@ -147,7 +124,7 @@ void saveToEEPROM() // Save all config into the atmega eeprom
   Serial.println("-----Save to EEPROM-----");
 #endif
 
-  volatile short eepromAddress = 0;
+  short eepromAddress = 0;
   for (byte profile = 0; profile <= 5; profile++)
   {
 #ifdef VERBOSE
@@ -228,7 +205,7 @@ void readEEPROM() // Read all config from the atmega eeprom and store it into th
 #ifdef VERBOSE
   Serial.println("-----Read from EEPROM-----");
 #endif
-  volatile short eepromAddress = 0;
+  short eepromAddress = 0;
   for (byte profile = 0; profile <= 5; profile++)
   {
 #ifdef VERBOSE
@@ -345,10 +322,10 @@ void scrollText() // function to scoll the text into the display
 void centerText(String txt) // Display the text in the center of the screen
 {
   oled.clearDisplay(); // clear the display
-  int16_t x1;
-  int16_t y1;
-  uint16_t textW;
-  uint16_t textH;
+  short x1;
+  short y1;
+  short textW;
+  short textH;
 
   configFont();
 
@@ -362,14 +339,12 @@ void centerText(String txt) // Display the text in the center of the screen
 
 void displayOnScreen(String txt) // display test on screen, check if is center text or scrolling text
 {
-  int16_t x1;
-  int16_t y1;
-  uint16_t textW;
-  uint16_t textH;
+  short x1;
+  short y1;
+  short textW;
+  short textH;
   oled.setFont(&FreeSans12pt7b);
   oled.getTextBounds(txt, 0, 0, &x1, &y1, &textW, &textH); // get the size of the text and store it into textH and textW
-
-  // size_t size = 12 * txt.length();                         // oled.strWidth(char_array);
 
   if (textW > SCREEN_WIDTH - 5) // if the text width is larger than the screen, the text is scrolling
   {
@@ -416,23 +391,22 @@ void selectProfile()
 { // When select profile mode is active
 
   // Profile Number blink:
-  if (selectProfileMillis + 500 < millis())
+  if (selectProfileMillis <= millis())
   { // wait 500ms
-
+    selectProfileMillis = millis() + 500;
     if (profileBlinkState)
     {
       profileBlinkState = false;
       displayOnScreen("Profil  ");
-      //oledRaw("Profil  ", 30,25);
+      // oledRaw("Profil  ", 30,25);
     }
     else
     {
       profileBlinkState = true;
       String txt = "Profil " + String((currentProfile + 1));
       displayOnScreen(txt);
-      //oledRaw(txt, 30,25);
+      // oledRaw(txt, 30,25);
     }
-    selectProfileMillis = millis();
   }
 
   for (byte i = 0; i <= 5; i++) // foreach key
@@ -542,6 +516,8 @@ void setup()
   displayOnScreen("Macropad");
   delay(500);
   setRGB(0, 255, 0);
+
+  textOnDisplay.reserve(100);
 }
 
 bool encoderAState[3];
@@ -549,7 +525,7 @@ bool encoderAState[3];
 void loop()
 {
 
-  for (byte i = 0; i < 3; i++) //forech encoder, check if thre is a nex position and change call the fonction
+  for (byte i = 0; i < 3; i++) // forech encoder, check if thre is a nex position and change call the fonction
   {
     if (digitalRead(encodersPins[i * 3]) == 0)
     {
@@ -710,14 +686,14 @@ void loop()
     { // if the encoder is already pressed
       // wait
       // Serial.println("Already press");
-      if (encoderMillis + 2000 < millis() && selectProfileMode == false)
+      if (encoderMillis <= millis() && selectProfileMode == false)
       {
         // 2 second after the begin of the press
         // Serial.println("2S --> profile set");
         // set profile menu
         selectProfileMode = true;
         printCurrentProfile();
-        selectProfileMillis = millis();
+        selectProfileMillis = millis() + 2000;
         while (!digitalRead(encoderKey1Pin))
         {
           /* code */
