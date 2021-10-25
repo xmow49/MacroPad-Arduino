@@ -12,7 +12,8 @@
 /// A generic graphics superclass that can handle all sorts of drawing. At a
 /// minimum you can subclass and provide drawPixel(). At a maximum you can do a
 /// ton of overriding to optimize. Used for any/all Adafruit displays!
-class Adafruit_GFX : public Print {
+class Adafruit_GFX : public Print
+{
 
 public:
   Adafruit_GFX(int16_t w, int16_t h); // Constructor
@@ -88,6 +89,11 @@ public:
                   uint16_t color, uint16_t bg);
   void drawXBitmap(int16_t x, int16_t y, const uint8_t bitmap[], int16_t w,
                    int16_t h, uint16_t color);
+
+  //-----------
+  void drawRamBitmap(int pozXi, int pozYi, int h, int w, byte color, byte bg, byte bitmap[], int mapSize);
+  void drawRamBitmap(int pozXi, int pozYi, int h, int w, byte color, byte bitmap[], int mapSize);
+  //------
   void drawGrayscaleBitmap(int16_t x, int16_t y, const uint8_t bitmap[],
                            int16_t w, int16_t h);
   void drawGrayscaleBitmap(int16_t x, int16_t y, uint8_t *bitmap, int16_t w,
@@ -125,7 +131,8 @@ public:
     @param  y    Y coordinate in pixels
   */
   /**********************************************************************/
-  void setCursor(int16_t x, int16_t y) {
+  void setCursor(int16_t x, int16_t y)
+  {
     cursor_x = x;
     cursor_y = y;
   }
@@ -147,7 +154,8 @@ public:
     @param   bg  16-bit 5-6-5 Color to draw background/fill with
   */
   /**********************************************************************/
-  void setTextColor(uint16_t c, uint16_t bg) {
+  void setTextColor(uint16_t c, uint16_t bg)
+  {
     textcolor = c;
     textbgcolor = bg;
   }
@@ -246,7 +254,8 @@ protected:
 };
 
 /// A simple drawn button UI element
-class Adafruit_GFX_Button {
+class Adafruit_GFX_Button
+{
 
 public:
   Adafruit_GFX_Button(void);
@@ -275,7 +284,8 @@ public:
     @param    p  True for pressed, false for not.
   */
   /**********************************************************************/
-  void press(bool p) {
+  void press(bool p)
+  {
     laststate = currstate;
     currstate = p;
   }
@@ -304,7 +314,8 @@ private:
 };
 
 /// A GFX 1-bit canvas context for graphics
-class GFXcanvas1 : public Adafruit_GFX {
+class GFXcanvas1 : public Adafruit_GFX
+{
 public:
   GFXcanvas1(uint16_t w, uint16_t h);
   ~GFXcanvas1(void);
@@ -336,7 +347,8 @@ private:
 };
 
 /// A GFX 8-bit canvas context for graphics
-class GFXcanvas8 : public Adafruit_GFX {
+class GFXcanvas8 : public Adafruit_GFX
+{
 public:
   GFXcanvas8(uint16_t w, uint16_t h);
   ~GFXcanvas8(void);
@@ -363,7 +375,8 @@ private:
 };
 
 ///  A GFX 16-bit canvas context for graphics
-class GFXcanvas16 : public Adafruit_GFX {
+class GFXcanvas16 : public Adafruit_GFX
+{
 public:
   GFXcanvas16(uint16_t w, uint16_t h);
   ~GFXcanvas16(void);

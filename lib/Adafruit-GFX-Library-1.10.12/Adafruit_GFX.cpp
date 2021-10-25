@@ -702,6 +702,63 @@ void Adafruit_GFX::fillTriangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
 
 // BITMAP / XBITMAP / GRAYSCALE / RGB BITMAP FUNCTIONS ---------------------
 
+
+
+//--------------------RAM Bitmap -------------------------
+
+void Adafruit_GFX::drawRamBitmap(int pozXi, int pozYi, int h, int w, byte color, byte bg, byte bitmap[], int mapSize) {
+  int pozX = pozXi;
+  int pozY = pozYi;
+
+  for (int x = 0; x < mapSize; x++) {
+    for (byte y = 0; y < 8; y++) {
+      byte dummy = bitmap[x] << y;
+      if (dummy >= 128) {
+        drawPixel(pozX, pozY, color);
+      }
+      else {
+        drawPixel(pozX, pozY, bg);
+      }
+      pozX++;
+      if (pozX == w + pozXi) {
+        pozX = pozXi;
+        pozY++;
+      }
+    }
+  }
+}
+
+void Adafruit_GFX::drawRamBitmap(int pozXi, int pozYi, int h, int w, byte color, byte bitmap[], int mapSize) {
+  int pozX = pozXi;
+  int pozY = pozYi;
+
+  for (int x = 0; x < mapSize; x++) {
+    for (byte y = 0; y < 8; y++) {
+      byte dummy = bitmap[x] << y;
+      if (dummy >= 128) {
+        drawPixel(pozX, pozY, color);
+      }
+      pozX++;
+      if (pozX == w + pozXi) {
+        pozX = pozXi;
+        pozY++;
+      }
+    }
+  }
+}
+
+
+//--------------------RAM Bitmap -------------------------
+
+
+
+
+
+
+
+
+
+
 /**************************************************************************/
 /*!
    @brief      Draw a PROGMEM-resident 1-bit image at the specified (x,y)
