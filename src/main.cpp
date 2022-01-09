@@ -1,9 +1,10 @@
 #include <Arduino.h>
 #include <config.h> //config file
+#include <MemoryUsage.h>
 
 #define HID_CUSTOM_LAYOUT
 #define LAYOUT_FRENCH
-#include <HID-Project.h> //Keybord ++
+#include <HID-Project.h> //Keyboard ++
 #include <EEPROM.h>
 
 // --- Oled Display ---
@@ -11,40 +12,38 @@
 #include <Adafruit_SSD1306.h>
 #include <Fonts/FreeSans12pt7b.h>
 
-#include <MemoryUsage.h>
-
-String strIcon;
-bool waitSerialIcon;
-unsigned char msgCount;
-
 bool textScrolling = false; // Store the state of text scrolling
 short textX;                // Store the current X position of the text
 String textOnDisplay;       // Store the current scolling text
 
-struct EncoderConf // Prepare encoders configstructure
+struct Encoders // Prepare encoders configstructure
 {
-  byte mode;
-  short value[3];
+  byte type;
+  short values[3];
 };
 
-struct KeyConf // Prepare keys config structure
+struct Keys // Prepare keys config structure
 {
-  byte mode;
-  short value[3];
+  byte type;
+  short values[3];
 };
 
-struct RGBConf // Prepare RGB config structure
+struct Profile
 {
-  byte r;
-  byte g;
-  byte b;
+  byte id;     // profile id
+  String name; // profile name
+  unsigned char icon[LOGO_SIZE];
+  byte color[3];
+  Encoders encoders[ENCODERS_COUNT];
+  Keys keys[KEYS_COUNT];
 };
 
-unsigned char logoConf[PROFILES_COUNT][LOGO_SIZE];
+struct MacropadConfig
+{
+  Profile profile[PROFILES_COUNT];
+};
 
-EncoderConf encoderConfig[ENCODERS_COUNT][PROFILES_COUNT]; // Create the encoder config with 3 encoders
-KeyConf keyConf[KEYS_COUNT][PROFILES_COUNT];               // Create the key config with 6 keys
-RGBConf rgbConf[PROFILES_COUNT];                           // Create the rgb conf foreach profile
+MacropadConfig macropadConfig;
 
 int encodersPosition[3] = {50, 50, 50};  // temp virtual position of encoders
 int encodersLastValue[3] = {50, 50, 50}; // Value of encoders
@@ -131,12 +130,14 @@ void saveToEEPROM() // Save all config into the atmega eeprom
 #endif
 
   short eepromAddress = 0;
+  //--------------------Save Profiles---------------------------------------------------------
   for (byte profile = 0; profile <= 5; profile++)
   {
 #ifdef VERBOSE
     String txt = "---- Profile " + String(profile) + " ----";
     Serial.println(txt);
 #endif
+    //---------------------Save Keys---------------------------
     for (byte i = 0; i < 6; i++)
     {
 #ifdef VERBOSE
@@ -152,23 +153,26 @@ void saveToEEPROM() // Save all config into the atmega eeprom
       Serial.println(keyConf[i][currentProfile].value[2]);
 #endif
       // Key mode
-      EEPROM.put(eepromAddress, keyConf[i][currentProfile].mode);
-      eepromAddress += sizeof(keyConf[i][currentProfile].mode);
+
+      EEPROM.put(eepromAddress, macropadConfig.profile[profile].keys[i].type);
+      eepromAddress += sizeof(macropadConfig.profile[profile].keys[i].type);
 
       for (byte nValue = 0; nValue <= 2; nValue++)
       {
-        EEPROM.put(eepromAddress, keyConf[i][currentProfile].value[nValue]);
-        eepromAddress += sizeof(keyConf[i][currentProfile].value[nValue]);
+
+        EEPROM.put(eepromAddress, macropadConfig.profile[profile].keys[i].values[nValue]);
+        eepromAddress += sizeof(macropadConfig.profile[profile].keys[i].values[nValue]);
       }
     }
 
+    //---------------------Save Encoders---------------------------
     for (byte i = 0; i < 3; i++)
     {
 #ifdef VERBOSE
       Serial.print("Encoder");
       Serial.print(i);
       Serial.print(" ");
-      Serial.print(encoderConfig[i][currentProfile].mode);
+      Serial.print(macropadConfig.profile[currentProfile].encoders[i].type);
       Serial.print(":");
       Serial.print(encoderConfig[i][currentProfile].value[0]);
       Serial.print(",");
@@ -178,17 +182,27 @@ void saveToEEPROM() // Save all config into the atmega eeprom
 #endif
 
       // Save Mode
-      EEPROM.put(eepromAddress, encoderConfig[i][currentProfile].mode);
-      eepromAddress += sizeof(encoderConfig[i][currentProfile].mode);
+      EEPROM.put(eepromAddress, macropadConfig.profile[profile].encoders[i].type);
+      eepromAddress += sizeof(macropadConfig.profile[profile].encoders[i].type);
 
       for (byte nValue = 0; nValue <= 2; nValue++)
       {
-        EEPROM.put(eepromAddress, encoderConfig[i][currentProfile].value[nValue]);
-        eepromAddress += sizeof(encoderConfig[i][currentProfile].value[nValue]);
+        EEPROM.put(eepromAddress, macropadConfig.profile[profile].encoders[i].values[nValue]);
+        eepromAddress += sizeof(macropadConfig.profile[profile].encoders[i].values[nValue]);
       }
     }
+
+    for (byte color = 0; color < 3; color++)
+    {
+      byte value = macropadConfig.profile[profile].color[color];
+      if (value == NULL)
+        value = 0;
+      Serial.println(value);
+      EEPROM.put(eepromAddress, value);
+      eepromAddress += sizeof(value);
+    }
   }
-  
+
 #ifdef VERBOSE
   Serial.print("EEPROM size: ");
   Serial.println(eepromAddress);
@@ -223,13 +237,13 @@ void readEEPROM() // Read all config from the atmega eeprom and store it into th
       Serial.println(keyConf[i][profile].value[2]);
 #endif
       // Get mode
-      EEPROM.get(eepromAddress, keyConf[i][profile].mode);
-      eepromAddress += sizeof(keyConf[i][profile].mode);
+      EEPROM.get(eepromAddress, macropadConfig.profile[profile].keys[i].type); // save key type
+      eepromAddress += sizeof(macropadConfig.profile[profile].keys[i].type);
 
       for (byte nValue = 0; nValue <= 2; nValue++)
       {
-        EEPROM.get(eepromAddress, keyConf[i][profile].value[nValue]);
-        eepromAddress += sizeof(keyConf[i][profile].value[nValue]);
+        EEPROM.get(eepromAddress, macropadConfig.profile[profile].keys[i].values[nValue]); // save key value
+        eepromAddress += sizeof(macropadConfig.profile[profile].keys[i].values[nValue]);
       }
     }
     for (byte i = 0; i < 3; i++) // foreach encoder
@@ -249,14 +263,24 @@ void readEEPROM() // Read all config from the atmega eeprom and store it into th
 #endif
 
       // Get Mode
-      EEPROM.get(eepromAddress, encoderConfig[i][profile].mode);
-      eepromAddress += sizeof(encoderConfig[i][profile].mode);
+      EEPROM.get(eepromAddress, macropadConfig.profile[profile].encoders[i].type); //
+      eepromAddress += sizeof(macropadConfig.profile[profile].encoders[i].type);
 
       for (byte nValue = 0; nValue <= 2; nValue++)
       {
-        EEPROM.get(eepromAddress, encoderConfig[i][profile].value[nValue]);
-        eepromAddress += sizeof(encoderConfig[i][profile].value[nValue]);
+        EEPROM.get(eepromAddress, macropadConfig.profile[profile].encoders[i].values[nValue]);
+        eepromAddress += sizeof(macropadConfig.profile[profile].encoders[i].values[nValue]);
       }
+    }
+
+    for (byte color = 0; color < 3; color++)
+    {
+      byte value;
+      EEPROM.get(eepromAddress, value);
+      eepromAddress += sizeof(value);
+      if (value == NULL)
+        value = 0;
+      macropadConfig.profile[profile].color[color] = value;
     }
   }
 }
@@ -342,9 +366,14 @@ void setRGB(byte r, byte g, byte b) // Set rgb value for LEDs
   analogWrite(ledG, g);
   analogWrite(ledB, b);
   // ---- Save Value to the conf ----
-  rgbConf[currentProfile].r = r;
-  rgbConf[currentProfile].g = g;
-  rgbConf[currentProfile].b = b;
+  macropadConfig.profile[currentProfile].color[0] = r;
+  macropadConfig.profile[currentProfile].color[1] = g;
+  macropadConfig.profile[currentProfile].color[2] = b;
+  for (byte color = 0; color < 3; color++)
+  {
+    MEMORY_PRINT_FREERAM;
+    Serial.println(macropadConfig.profile[currentProfile].color[color]);
+  }
 }
 bool profileBlinkState = true;
 
@@ -362,12 +391,17 @@ void setProfile(byte profile)
 {
   currentProfile = profile;
   selectProfileMode = false;
-  String txt = "Profil " + String((currentProfile + 1));
-  displayOnScreen(txt);
-  setRGB(rgbConf[currentProfile].r, rgbConf[currentProfile].g, rgbConf[currentProfile].b);
+  String txt = macropadConfig.profile[profile].name;
+  if (txt.length() == 0)
+  {
+    txt = "Profil " + String((currentProfile + 1));
+  }
 
-  //oled.drawRoundRect(0, 3, LOGO_HEIGHT + 2, LOGO_HEIGHT + 2, 5, WHITE);
-  oled.drawRamBitmap(1, 4, LOGO_HEIGHT, LOGO_WIDTH, WHITE, logoConf[currentProfile], 72);
+  displayOnScreen(txt);
+  setRGB(macropadConfig.profile[currentProfile].color[0], macropadConfig.profile[currentProfile].color[1], macropadConfig.profile[currentProfile].color[2]);
+
+  // oled.drawRoundRect(0, 3, LOGO_HEIGHT + 2, LOGO_HEIGHT + 2, 5, WHITE);
+  oled.drawRamBitmap(1, 4, LOGO_HEIGHT, LOGO_WIDTH, WHITE, macropadConfig.profile[currentProfile].icon, 72);
 
   oled.display();
 }
@@ -383,6 +417,7 @@ void selectProfile()
   // Profile Number blink:
   if (selectProfileMillis <= millis())
   { // wait 500ms
+    FREERAM_PRINT;
     oled.setCursor(90, 25);
     selectProfileMillis = millis() + 500;
     clearProfileNumber();
@@ -445,8 +480,6 @@ void setup()
   Serial.println("Start");
 #endif
 
-  setRGB(255, 0, 0);
-
 #ifdef VERBOSE
   Serial.println("PinMode:");
 #endif
@@ -474,7 +507,7 @@ void setup()
 
   delay(500);
 
-  setRGB(0, 255, 0);
+  setRGB(255, 0, 0);
 
 #ifdef VERBOSE
   Serial.println("Setup Interrupts");
@@ -503,17 +536,21 @@ void setup()
   Serial.println("Read EEPROM");
 #endif
 
-  readEEPROM();
-
   delay(500);
-  setRGB(255, 0, 0);
 
-  displayOnScreen(F("Macropad "));
-  delay(500);
   setRGB(0, 255, 0);
 
+  displayOnScreen(F("Macropad "));
+
+  delay(500);
+
+  setRGB(0, 0, 255);
+
+  delay(500);
+
+  readEEPROM();
   // textOnDisplay.reserve(100);
-  strIcon.reserve(300);
+  setProfile(0);
 }
 
 bool encoderAState[3];
@@ -558,10 +595,12 @@ void loop()
         }
         else
         {
-          Serial.println("Key" + String(i));
-          if (keyConf[i][currentProfile].mode == 0) // System Action
+          Serial.println("K" + String(i));
+
+          if (macropadConfig.profile[currentProfile].keys[i].type == 0) // System Action
           {
-            Consumer.write(ConsumerKeycode(keyConf[i][currentProfile].value[0]));
+
+            Consumer.write(ConsumerKeycode(macropadConfig.profile[currentProfile].keys[i].values[0]));
             currentMillis = millis() / 100;
             // while (digitalRead(keysPins[i]))
             // {
@@ -572,37 +611,37 @@ void loop()
             //   }
             // }
           }
-          else if (keyConf[i][currentProfile].mode == 1) // Key Combination
+          else if (macropadConfig.profile[currentProfile].keys[i].type == 1) // Key Combination
           {
 
             for (byte j = 0; j < 3; j++) // for each key
             {
-              if (keyConf[i][currentProfile].value[j] == 0 && keyConf[i][currentProfile].value[j] != 60) // if no key and key 60 (<) because impoved keyboard
+              if (macropadConfig.profile[currentProfile].keys[i].values[j] == 0 && macropadConfig.profile[currentProfile].keys[i].values[j] != 60) // if no key and key 60 (<) because impoved keyboard
               {
               }
-              else if (keyConf[i][currentProfile].value[j] <= 32 && keyConf[i][currentProfile].value[j] >= 8) // function key (spaces, shift, etc)
+              else if (macropadConfig.profile[currentProfile].keys[i].values[j] <= 32 && macropadConfig.profile[currentProfile].keys[i].values[j] >= 8) // function key (spaces, shift, etc)
               {
-                Keyboard.press(keyConf[i][currentProfile].value[j]);
+                Keyboard.press(macropadConfig.profile[currentProfile].keys[i].values[j]);
 #ifdef VERBOSE
                 Serial.print("Press ");
                 Serial.println(keyConf[i][currentProfile].value[j]);
 #endif
               }
-              else if (keyConf[i][currentProfile].value[j] <= 90 && keyConf[i][currentProfile].value[j] >= 65) // alaphabet
-              {                                                                                                // ascii normal code exept '<' (60)
-                Keyboard.press(keyConf[i][currentProfile].value[j] + 32);                                      // Normal character + 32 (ascii Upercase to lowcase)
+              else if (macropadConfig.profile[currentProfile].keys[i].values[j] <= 90 && macropadConfig.profile[currentProfile].keys[i].values[j] >= 65) // alaphabet
+              {                                                                                                                                          // ascii normal code exept '<' (60)
+                Keyboard.press(macropadConfig.profile[currentProfile].keys[i].values[j] + 32);                                                           // Normal character + 32 (ascii Upercase to lowcase)
 #ifdef VERBOSE
                 Serial.print("Press ");
                 Serial.println(keyConf[i][currentProfile].value[j] + 32);
 #endif
               }
-              else if (keyConf[i][currentProfile].value[j] <= 57 && keyConf[i][currentProfile].value[j] >= 48) // numbers
+              else if (macropadConfig.profile[currentProfile].keys[i].values[j] <= 57 && macropadConfig.profile[currentProfile].keys[i].values[j] >= 48) // numbers
               {
-                Keyboard.press(keyConf[i][currentProfile].value[j]); // Normal number
+                Keyboard.press(macropadConfig.profile[currentProfile].keys[i].values[j]); // Normal number
               }
               else
               {
-                Keyboard.press(KeyboardKeycode(keyConf[i][currentProfile].value[j] - 100)); // Improved keyboard
+                Keyboard.press(KeyboardKeycode(macropadConfig.profile[currentProfile].keys[i].values[j])); // Improved keyboard
 #ifdef VERBOSE
                 Serial.print("Press ");
                 Serial.println(keyConf[i][currentProfile].value[j] - 100);
@@ -639,17 +678,18 @@ void loop()
 #ifdef VERBOSE
           Serial.print("Encoder" + String(i) + ":UP");
 #endif
-          if (encoderConfig[i][currentProfile].mode == 0 && encoderConfig[i][currentProfile].value[0] == 0) // If is a System Action AND master volume selected
+
+          if (macropadConfig.profile[currentProfile].encoders[i].type == 0 && macropadConfig.profile[currentProfile].encoders[i].values[0] == 0) // If is a System Action AND master volume selected
           {
             Consumer.write(MEDIA_VOL_UP);
           }
-          else if (encoderConfig[i][currentProfile].mode == 0 && encoderConfig[i][currentProfile].value[0] == 1) // If is a System Action AND master volume selected
+          else if (macropadConfig.profile[currentProfile].encoders[i].type == 0 && macropadConfig.profile[currentProfile].encoders[i].values[0] == 1) // If is a System Action AND master volume selected
           {
             Consumer.write(HID_CONSUMER_FAST_FORWARD);
           }
-          else if (encoderConfig[i][currentProfile].mode == 1) // If is a key action
+          else if (macropadConfig.profile[currentProfile].encoders[i].type == 1) // If is a key action
           {
-            Keyboard.write(encoderConfig[i][currentProfile].value[0]); // get the ascii code, and press the key
+            Keyboard.write(macropadConfig.profile[currentProfile].encoders[i].values[0]); // get the ascii code, and press the key
           }
         }
         else // Encoder Anti-ClockWise Turn
@@ -657,17 +697,17 @@ void loop()
 #ifdef VERBOSE
           Serial.print("Encoder" + String(i) + ":DOWN");
 #endif
-          if (encoderConfig[i][currentProfile].mode == 0 && encoderConfig[i][currentProfile].value[0] == 0)
+          if (macropadConfig.profile[currentProfile].encoders[i].type == 0 && macropadConfig.profile[currentProfile].encoders[i].values[0] == 0)
           {
             Consumer.write(MEDIA_VOL_DOWN);
           }
-          else if (encoderConfig[i][currentProfile].mode == 0 && encoderConfig[i][currentProfile].value[0] == 1) // If is a System Action AND master volume selected
+          else if (macropadConfig.profile[currentProfile].encoders[i].type == 0 && macropadConfig.profile[currentProfile].encoders[i].values[0] == 1) // If is a System Action AND master volume selected
           {
             Consumer.write(HID_CONSUMER_REWIND);
           }
-          else if (encoderConfig[i][currentProfile].mode == 1) // If is a key action
+          else if (macropadConfig.profile[currentProfile].encoders[i].type == 1) // If is a key action
           {
-            Keyboard.write(encoderConfig[i][currentProfile].value[1]); // get the ascii code, and press the key
+            Keyboard.write(macropadConfig.profile[currentProfile].encoders[i].values[1]); // get the ascii code, and press the key
           }
         }
         encodersLastValue[i] = encodersPosition[i];
@@ -729,170 +769,168 @@ void loop()
 
   if (Serial.available() > 0)
   {
-
+    bool validCmd = true;
     String serialMsg; // Store the tmp serial message
     // serialMsg.reserve(200);
     serialMsg = Serial.readString();
     serialMsg.trim();
 
-    if (waitSerialIcon)
+    String command = getArgs(serialMsg, ' ', 0);
+    short arg[5];
+    for (byte i = 0; i < 5; i++)
     {
-      FREERAM_PRINT;
-      strIcon = strIcon + serialMsg;
-      Serial.println(strIcon);
-      unsigned char icon[72];
-      strIcon.toCharArray(icon, 72);
-      strIcon = "";
-      for (byte i = 0; i <= 72; i++)
+      arg[i] = getArgs(serialMsg, ' ', i + 1).toInt();
+    }
+    /*
+    Serial.println(arg[0]); //n encoder/key
+    Serial.println(arg[1]); //mode
+    Serial.println(arg[2]); //Value 1
+    Serial.println(arg[3]); //Value 2
+    Serial.println(arg[4]); //Value 3
+    */
+    if (command == "P") // Ping
+    {
+      Serial.println("P"); // Pong
+    }
+    else if (command == "K") // Set Key
+    {
+      macropadConfig.profile[currentProfile].keys[arg[0]].type = arg[1];
+      // keyConf[arg[0]][currentProfile].mode = arg[1]; // Save Mode
+      for (byte i = 0; i < 3; i++) // foreach value in the command
       {
-        logoConf[currentProfile][i] = icon[i];
-        Serial.println(icon[i]);
+        macropadConfig.profile[currentProfile].keys[arg[0]].values[i] = arg[i + 2];
+        // keyConf[arg[0]][currentProfile].value[i] = arg[i + 2]; // Save Values
       }
-      setProfile(currentProfile);
+    }
 
-      // if (msgCount <= 3)
-      // {
+    else if (command == "E") // Set encoder action
+    {
+      macropadConfig.profile[currentProfile].encoders[arg[0]].type = arg[1];
+      // encoderConfig[arg[0]][currentProfile].mode = arg[1]; // Get the mode and save it in the config
+      for (byte i = 0; i < 3; i++) // for all values, save it in the config
+      {
+        macropadConfig.profile[currentProfile].encoders[arg[0]].values[i] = arg[i + 2];
+        // encoderConfig[arg[0]][currentProfile].value[i] = arg[i + 2];
+      }
+    }
+    else if (command == "T") // Set Text
+    {
+      String txt = getArgs(serialMsg, '"', 1);
+      txt.remove(txt.length() - 1);
+      displayOnScreen(txt);
+    }
+#ifdef VERBOSE
+    else if (command == "G") // Get config command
+    {
+      for (byte profile = 0; profile <= 5; profile++)
+      {
 
-      //   msgCount++;
-      // }
+        String txt = "---- Profile " + String(profile) + " ----";
+        Serial.println(txt);
 
-      // else
-      // {
-      //   // waitSerialIcon = false;
-      // }
+        for (byte i = 0; i < 6; i++) // for all keys, get the config and display it
+        {
+          // Serial.print("Key");
+          // Serial.print(i);
+          // Serial.print(" ");
+          // Serial.print(keyConf[i][profile].mode);
+          // Serial.print(" ");
+          // Serial.print(keyConf[i][profile].value[0]);
+          // Serial.print(":");
+          // Serial.print(keyConf[i][profile].value[1]);
+          // Serial.print(":");
+          // Serial.println(keyConf[i][profile].value[2]);
+        }
+        for (byte i = 0; i < 3; i++) // for all encoders, get the config and display it
+        {
+          // Serial.print("Encoder");
+          // Serial.print(i);
+          // Serial.print(" ");
+          // Serial.print(encoderConfig[i][profile].mode);
+          // Serial.print(" ");
+          // Serial.print(encoderConfig[i][profile].value[0]);
+          // Serial.print(":");
+          // Serial.print(encoderConfig[i][profile].value[1]);
+          // Serial.print(":");
+          // Serial.println(encoderConfig[i][profile].value[2]);
+        }
+      }
+    }
+#endif
+    else if (command == "S") // save-config command
+    {
+      saveToEEPROM();
+    }
+    else if (command == "R") // read-config command
+    {
+      readEEPROM();
+    }
+
+    else if (command == "C") // set-rgb,<Red: 0 - 255>,<Green: 0 - 255>,<Blue: 0 - 255>
+    {
+      setRGB(arg[0], arg[1], arg[2]); // Set RGB LED color to rgb value from the command :
+    }
+    else if (command == "Z") // reset all the config to 0
+    {
+      for (byte profile = 0; profile <= 5; profile++)
+      {
+        String txt = "Profile " + String(profile) + " :";
+        Serial.println(txt);
+        for (byte i = 0; i < 3; i++)
+        {
+          macropadConfig.profile[currentProfile].encoders[i].type = 0;
+          // encoderConfig[i][profile].mode = 0;
+          for (byte j = 0; j < 3; j++)
+          {
+            macropadConfig.profile[currentProfile].encoders[i].values[j] = 0;
+          }
+        }
+
+        for (byte i = 0; i < 6; i++)
+        {
+          macropadConfig.profile[currentProfile].keys[i].type = 0;
+          for (byte j = 0; j < 3; j++)
+          {
+            macropadConfig.profile[currentProfile].keys[i].values[j] = 0;
+          }
+        }
+      }
+    }
+    else if (command == "I") // set icon
+    {
+    }
+    else if (command == "A") // set profile
+    {
+      setProfile(arg[0]);
+    }
+    else if (command == "B") // set profile
+    {
+      bool profile = arg[0];
+      String name = getArgs(serialMsg, '"', 1);
+      Serial.println(name);
+      if (name.length() > 10)
+      {
+        name.remove(11);
+      }
+      macropadConfig.profile[profile].name = name;
+      if(profile == currentProfile){
+        setProfile(profile);
+      }
     }
     else
     {
-
-      String command = getArgs(serialMsg, ' ', 0);
-      short arg[5];
-      for (byte i = 0; i < 5; i++)
-      {
-        arg[i] = getArgs(serialMsg, ' ', i + 1).toInt();
-      }
-      /*
-      Serial.println(arg[0]); //n encoder/key
-      Serial.println(arg[1]); //mode
-      Serial.println(arg[2]); //Value 1
-      Serial.println(arg[3]); //Value 2
-      Serial.println(arg[4]); //Value 3
-      */
-      if (command == "ping")
-      {
-        Serial.println("pong");
-      }
-      else if (command == "set-key")
-      {
-        keyConf[arg[0]][currentProfile].mode = arg[1]; // Save Mode
-        for (byte i = 0; i < 3; i++)                   // foreach value in the command
-        {
-          keyConf[arg[0]][currentProfile].value[i] = arg[i + 2]; // Save Values
-        }
-      }
-
-      else if (command == "set-encoder") // Set encoder action
-      {
-        encoderConfig[arg[0]][currentProfile].mode = arg[1]; // Get the mode and save it in the config
-        for (byte i = 0; i < 3; i++)                         // for all values, save it in the config
-        {
-          encoderConfig[arg[0]][currentProfile].value[i] = arg[i + 2];
-        }
-      }
-      else if (command == "set-text")
-      {
-        String txt = getArgs(serialMsg, '"', 1);
-        txt.remove(txt.length() - 1);
-        displayOnScreen(txt);
-      }
-
-      else if (command == "get-config") // Get config command
-      {
-        for (byte profile = 0; profile <= 5; profile++)
-        {
-#ifdef VERBOSE
-          String txt = "---- Profile " + String(profile) + " ----";
-          Serial.println(txt);
-#endif
-          for (byte i = 0; i < 6; i++) // for all keys, get the config and display it
-          {
-            // Serial.print("Key");
-            // Serial.print(i);
-            // Serial.print(" ");
-            // Serial.print(keyConf[i][profile].mode);
-            // Serial.print(" ");
-            // Serial.print(keyConf[i][profile].value[0]);
-            // Serial.print(":");
-            // Serial.print(keyConf[i][profile].value[1]);
-            // Serial.print(":");
-            // Serial.println(keyConf[i][profile].value[2]);
-          }
-          for (byte i = 0; i < 3; i++) // for all encoders, get the config and display it
-          {
-            // Serial.print("Encoder");
-            // Serial.print(i);
-            // Serial.print(" ");
-            // Serial.print(encoderConfig[i][profile].mode);
-            // Serial.print(" ");
-            // Serial.print(encoderConfig[i][profile].value[0]);
-            // Serial.print(":");
-            // Serial.print(encoderConfig[i][profile].value[1]);
-            // Serial.print(":");
-            // Serial.println(encoderConfig[i][profile].value[2]);
-          }
-        }
-      }
-      else if (command == "save-config") // save-config command
-      {
-        saveToEEPROM();
-      }
-      else if (command == "read-config") // read-config command
-      {
-        readEEPROM();
-      }
-
-      else if (command == "set-rgb") // set-rgb <Red: 0 - 255> <Green: 0 - 255> <Blue: 0 - 255>
-      {
-        setRGB(arg[0], arg[1], arg[2]); // Set RGB LED color to rgb value from the command :
-      }
-      else if (command == "reset-config") // reset all the config to 0
-      {
-        for (byte profile = 0; profile <= 5; profile++)
-        {
-          String txt = "Profile " + String(profile) + " :";
-          Serial.println(txt);
-          for (byte i = 0; i < 3; i++)
-          {
-            encoderConfig[i][profile].mode = 0;
-            for (byte j = 0; j < 3; j++)
-            {
-              encoderConfig[i][profile].value[j] = 0;
-            }
-          }
-
-          for (byte i = 0; i < 6; i++)
-          {
-            keyConf[i][profile].mode = 0;
-            for (byte j = 0; j < 3; j++)
-            {
-              keyConf[i][profile].value[j] = 0;
-            }
-          }
-        }
-      }
-      else if (command == "set-icon")
-      {
-        waitSerialIcon = true;
-        msgCount = 0;
-        strIcon = "";
-      }
-      else
-      {
-        Serial.print(command);
-        Serial.println(": error");
-      }
-      command = "";
+      validCmd = false;
     }
-    Serial.println("OK");
+    if (validCmd)
+    {
+      Serial.println("1"); // ok
+    }
+    else
+    {
+      Serial.println("0"); // error
+    }
+    // command = "";
+
     // serialMsg = "";
   }
 

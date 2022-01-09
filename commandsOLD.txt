@@ -1,0 +1,119 @@
+set-key 0 action MediaVolumeDOWN
+set-key 1 action MediaPlayPause
+set-key 2 action MediaVolumeUP
+
+set-key 3 action MediaRewind
+set-key 4 action MediaStop
+set-key 5 action MediaNext
+
+
+
+
+
+//set-key 0 combination 65,66,56,78
+
+//set-key 4 midi 54
+
+
+
+//set-encoder 0 L action vol
+//set-encoder 0 R combination 65
+//set-encoder 0 P action vol
+ 
+set-text "BONSOIR A dddddddddddddddddddddd  dsdfgfdgfdgfd fdg fdg fdg fdgfdgfd fd g f"
+//set-text font 1
+//set-text color 1
+//set-text size 2
+
+
+set-text "BONSOIR A TOUS Les pistaches"
+set-text "BONSOIR"
+
+
+set-encoder 0 system-vol vol+-
+
+set-encoder 0 software-vol spotify
+
+
+
+set-encoder 0 keys L 66
+
+set-encoder 1 sys vol
+set-encoder 0 sys vol
+
+
+----------------------------------------
+set-encoder <n encoder> <mode> <value> <value optionel> <value optionel>
+ command       arg0     arg1    arg2        arg3             arg4
+mode:
+ - 0 : System Action
+ - 1 : Key Combination UP
+ - 2 : Key Combination DOWN
+ - 3 : Key Combination CLICK
+ - 4 : Midi
+----------------------------------------
+
+set-encoder 1 0 0 #Master volume
+set-encoder 2 0 1 #Next/previos
+
+set-encoder n 2 65 #KeyA
+set-encoder n 2 65,66 #KeyA + KeyB
+
+------------------------------------
+
+
+
+
+
+----------------------------------------
+set-key <n key> <mode> <value> <value optionel> <value optionel>
+command  arg0    arg1   arg2        arg3             arg4
+mode:
+ - 0 : System Action
+ - 1 : Key Combination
+ - 2 : Midi
+----------------------------------------
+set-key 0 1 182 #previous
+set-key 1 1 205 #PlayPause
+set-key 2 1 181 #Next
+
+set-key 3 1 179
+set-key 4 1 183
+set-key 5 1 179
+
+set-key 0 1 65 #KeyA
+set-key n 2 65,66 #KeyA + KeyB
+
+------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+set-led 255 5 10
+
+932
+17152
+
+926
+17146
+
+874
+16350
+
+834
+15976
+
+836
+16280
+
+848
+16538
