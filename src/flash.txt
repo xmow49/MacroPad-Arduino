@@ -61,3 +61,9 @@ Flash: [==========]  96.1% (used 27544 bytes from 28672 bytes)
 
 RAM:   [======    ]  63.1% (used 1616 bytes from 2560 bytes)
 Flash: [==========]  95.3% (used 27314 bytes from 28672 bytes)
+
+RAM:   [======    ]  62.3% (used 1594 bytes from 2560 bytes)
+Flash: [==========]  97.7% (used 28006 bytes from 28672 bytes)
+
+RAM:   [=======   ]  65.5% (used 1678 bytes from 2560 bytes)
+Flash: [==========]  97.2% (used 27874 bytes from 28672 bytes)

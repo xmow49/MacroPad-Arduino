@@ -30,8 +30,8 @@ struct Keys // Prepare keys config structure
 
 struct Profile
 {
-  byte id;     // profile id
-  String name; // profile name
+  byte id;       // profile id
+  char name[20]; // profile name
   unsigned char icon[LOGO_SIZE];
   byte color[3];
   Encoders encoders[ENCODERS_COUNT];
@@ -124,36 +124,14 @@ void encoder(byte encoder) // function for the encoder interrupt
 
 void saveToEEPROM() // Save all config into the atmega eeprom
 {
-
-#ifdef VERBOSE
-  Serial.println("-----Save to EEPROM-----");
-#endif
-
-  short eepromAddress = 0;
+  short eepromAddress = 0; // eeprom address
   //--------------------Save Profiles---------------------------------------------------------
   for (byte profile = 0; profile <= 5; profile++)
   {
-#ifdef VERBOSE
-    String txt = "---- Profile " + String(profile) + " ----";
-    Serial.println(txt);
-#endif
     //---------------------Save Keys---------------------------
     for (byte i = 0; i < 6; i++)
     {
-#ifdef VERBOSE
-      Serial.print("Key");
-      Serial.print(i);
-      Serial.print(" ");
-      Serial.print(keyConf[i][currentProfile].mode);
-      Serial.print(":");
-      Serial.print(keyConf[i][currentProfile].value[0]);
-      Serial.print(",");
-      Serial.print(keyConf[i][currentProfile].value[1]);
-      Serial.print(",");
-      Serial.println(keyConf[i][currentProfile].value[2]);
-#endif
       // Key mode
-
       EEPROM.put(eepromAddress, macropadConfig.profile[profile].keys[i].type);
       eepromAddress += sizeof(macropadConfig.profile[profile].keys[i].type);
 
@@ -168,19 +146,6 @@ void saveToEEPROM() // Save all config into the atmega eeprom
     //---------------------Save Encoders---------------------------
     for (byte i = 0; i < 3; i++)
     {
-#ifdef VERBOSE
-      Serial.print("Encoder");
-      Serial.print(i);
-      Serial.print(" ");
-      Serial.print(macropadConfig.profile[currentProfile].encoders[i].type);
-      Serial.print(":");
-      Serial.print(encoderConfig[i][currentProfile].value[0]);
-      Serial.print(",");
-      Serial.print(encoderConfig[i][currentProfile].value[1]);
-      Serial.print(",");
-      Serial.println(encoderConfig[i][currentProfile].value[2]);
-#endif
-
       // Save Mode
       EEPROM.put(eepromAddress, macropadConfig.profile[profile].encoders[i].type);
       eepromAddress += sizeof(macropadConfig.profile[profile].encoders[i].type);
@@ -192,15 +157,20 @@ void saveToEEPROM() // Save all config into the atmega eeprom
       }
     }
 
+    //---------------------Save Profile Color ---------------------------
     for (byte color = 0; color < 3; color++)
     {
       byte value = macropadConfig.profile[profile].color[color];
       if (value == NULL)
         value = 0;
-      Serial.println(value);
       EEPROM.put(eepromAddress, value);
       eepromAddress += sizeof(value);
     }
+    //---------------------Save Profile Name ---------------------------
+    EEPROM.put(eepromAddress, macropadConfig.profile[profile].name);
+    eepromAddress += sizeof(macropadConfig.profile[profile].name);
+    Serial.println(macropadConfig.profile[profile].name);
+    Serial.println(sizeof(macropadConfig.profile[profile].name));
   }
 
 #ifdef VERBOSE
@@ -273,6 +243,7 @@ void readEEPROM() // Read all config from the atmega eeprom and store it into th
       }
     }
 
+    //---------------------Save Profile Color ---------------------------
     for (byte color = 0; color < 3; color++)
     {
       byte value;
@@ -282,6 +253,11 @@ void readEEPROM() // Read all config from the atmega eeprom and store it into th
         value = 0;
       macropadConfig.profile[profile].color[color] = value;
     }
+
+    //---------------------Save Profile Name ---------------------------
+    EEPROM.get(eepromAddress, macropadConfig.profile[profile].name);
+    eepromAddress += sizeof(macropadConfig.profile[profile].name);
+    Serial.println(macropadConfig.profile[profile].name);
   }
 }
 
@@ -369,11 +345,6 @@ void setRGB(byte r, byte g, byte b) // Set rgb value for LEDs
   macropadConfig.profile[currentProfile].color[0] = r;
   macropadConfig.profile[currentProfile].color[1] = g;
   macropadConfig.profile[currentProfile].color[2] = b;
-  for (byte color = 0; color < 3; color++)
-  {
-    MEMORY_PRINT_FREERAM;
-    Serial.println(macropadConfig.profile[currentProfile].color[color]);
-  }
 }
 bool profileBlinkState = true;
 
@@ -396,14 +367,13 @@ void setProfile(byte profile)
   {
     txt = "Profil " + String((currentProfile + 1));
   }
-
   displayOnScreen(txt);
   setRGB(macropadConfig.profile[currentProfile].color[0], macropadConfig.profile[currentProfile].color[1], macropadConfig.profile[currentProfile].color[2]);
 
-  // oled.drawRoundRect(0, 3, LOGO_HEIGHT + 2, LOGO_HEIGHT + 2, 5, WHITE);
-  oled.drawRamBitmap(1, 4, LOGO_HEIGHT, LOGO_WIDTH, WHITE, macropadConfig.profile[currentProfile].icon, 72);
+  //// oled.drawRoundRect(0, 3, LOGO_HEIGHT + 2, LOGO_HEIGHT + 2, 5, WHITE);
+  // oled.drawRamBitmap(1, 4, LOGO_HEIGHT, LOGO_WIDTH, WHITE, macropadConfig.profile[currentProfile].icon, 72);
 
-  oled.display();
+  // oled.display();
 }
 
 void clearProfileNumber()
@@ -411,16 +381,15 @@ void clearProfileNumber()
   oled.writeFillRect(90, 9, 12, 18, BLACK);
 }
 
-void selectProfile()
-{ // When select profile mode is active
-  static String strProfile;
+void selectProfile()        // comment this function
+{                           // When select profile mode is active
+  static String strProfile; // String to store the profile name
   // Profile Number blink:
   if (selectProfileMillis <= millis())
-  { // wait 500ms
-    FREERAM_PRINT;
-    oled.setCursor(90, 25);
-    selectProfileMillis = millis() + 500;
-    clearProfileNumber();
+  {                                       // wait 500ms
+    oled.setCursor(90, 25);               // set the cursor in the good position
+    selectProfileMillis = millis() + 500; // wait 500ms
+    clearProfileNumber();                 // clear the profile number
     if (profileBlinkState)
     {
       profileBlinkState = false;
@@ -548,7 +517,8 @@ void setup()
 
   delay(500);
 
-  readEEPROM();
+  // readEEPROM();
+
   // textOnDisplay.reserve(100);
   setProfile(0);
 }
@@ -866,9 +836,17 @@ void loop()
       readEEPROM();
     }
 
-    else if (command == "C") // set-rgb,<Red: 0 - 255>,<Green: 0 - 255>,<Blue: 0 - 255>
+    else if (command == "C") // C <profile> <Red: 0 - 255> <Green: 0 - 255> <Blue: 0 - 255>
     {
-      setRGB(arg[0], arg[1], arg[2]); // Set RGB LED color to rgb value from the command :
+      byte profile = arg[0];
+      for (byte i = 0; i < 3; i++)
+      {
+        macropadConfig.profile[profile].color[i] = arg[i + 1];
+      }
+      if (profile == currentProfile)
+      {
+        setRGB(arg[0], arg[1], arg[2]); // Set RGB LED color to rgb value from the command :
+      }
     }
     else if (command == "Z") // reset all the config to 0
     {
@@ -905,17 +883,22 @@ void loop()
     }
     else if (command == "B") // set profile
     {
-      bool profile = arg[0];
-      String name = getArgs(serialMsg, '"', 1);
-      Serial.println(name);
+      MEMORY_PRINT_FREERAM;
+      byte profile = arg[0];                    // Get the profile number
+      String name = getArgs(serialMsg, '"', 1); // Get the name of the profile
+      Serial.println(name);                     // Display the name of the profile
       if (name.length() > 10)
       {
         name.remove(11);
+        Serial.println(name);
       }
-      macropadConfig.profile[profile].name = name;
-      if(profile == currentProfile){
+      name.toCharArray(macropadConfig.profile[profile].name, name.length() + 1); // Save the name of the profile
+      Serial.println(macropadConfig.profile[profile].name);                      // Display the name of the profile
+      if (profile == currentProfile)
+      {
         setProfile(profile);
       }
+      MEMORY_PRINT_FREERAM;
     }
     else
     {
