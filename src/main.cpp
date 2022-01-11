@@ -169,8 +169,8 @@ void saveToEEPROM() // Save all config into the atmega eeprom
     //---------------------Save Profile Name ---------------------------
     EEPROM.put(eepromAddress, macropadConfig.profile[profile].name);
     eepromAddress += sizeof(macropadConfig.profile[profile].name);
-    Serial.println(macropadConfig.profile[profile].name);
-    Serial.println(sizeof(macropadConfig.profile[profile].name));
+    // Serial.println(macropadConfig.profile[profile].name);
+    // Serial.println(sizeof(macropadConfig.profile[profile].name));
   }
 
 #ifdef VERBOSE
@@ -762,25 +762,21 @@ void loop()
     {
       Serial.println("P"); // Pong
     }
-    else if (command == "K") // Set Key
+    else if (command == "K") // Set Key: K <profile> <n key> <type> <value> <value optional> <value optional>
     {
-      macropadConfig.profile[currentProfile].keys[arg[0]].type = arg[1];
-      // keyConf[arg[0]][currentProfile].mode = arg[1]; // Save Mode
+      macropadConfig.profile[arg[0]].keys[arg[1]].type = arg[2];  // Set the type of the key
       for (byte i = 0; i < 3; i++) // foreach value in the command
       {
-        macropadConfig.profile[currentProfile].keys[arg[0]].values[i] = arg[i + 2];
-        // keyConf[arg[0]][currentProfile].value[i] = arg[i + 2]; // Save Values
+        macropadConfig.profile[arg[0]].keys[arg[1]].values[i] = arg[i + 3]; // Set the value of the key
       }
     }
 
-    else if (command == "E") // Set encoder action
+    else if (command == "E") // Set encoder action: E <profile> <n encoder> <type> <value> <value optional> <value optional>
     {
-      macropadConfig.profile[currentProfile].encoders[arg[0]].type = arg[1];
-      // encoderConfig[arg[0]][currentProfile].mode = arg[1]; // Get the mode and save it in the config
+      macropadConfig.profile[arg[0]].encoders[arg[1]].type = arg[2];// Get the mode and save it in the config
       for (byte i = 0; i < 3; i++) // for all values, save it in the config
       {
-        macropadConfig.profile[currentProfile].encoders[arg[0]].values[i] = arg[i + 2];
-        // encoderConfig[arg[0]][currentProfile].value[i] = arg[i + 2];
+        macropadConfig.profile[arg[0]].encoders[arg[1]].values[i] = arg[i + 3]; // Save Values
       }
     }
     else if (command == "T") // Set Text

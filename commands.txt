@@ -1,6 +1,7 @@
 ---------------SET ENCODER---------------------------------------------------------
-E <n encoder> <type> <value> <value optionel> <value optionel>
-command arg0   arg1    arg2        arg3             arg4
+E <profile> <n encoder> <type> <value> <value optionel> <value optionel>
+command arg0   arg1      arg2    arg3        arg4              arg5
+
 type:
  - 0 : System Action
  - 1 : Key Combination UP
@@ -19,7 +20,7 @@ E n 2 65,66 #KeyA + KeyB
 
 
 ----------------SET KEY------------------------------------------------------------
-K <n key> <type> <value> <value optionel> <value optionel>
+K <profile> <n key> <type> <value> <value optionel> <value optionel>
 command  arg0    arg1   arg2        arg3             arg4
 type:
  - 0 : System Action
