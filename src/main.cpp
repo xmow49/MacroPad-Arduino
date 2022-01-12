@@ -411,6 +411,7 @@ void loop()
           {
             for (byte j = 0; j < 3; j++) // for each key
             {
+              //Serial.println("Value:" + String(keyValues[j]));
               if (keyValues[j] == 0 && keyValues[j] != 60) // if no key and key 60 (<) because impoved keyboard
               {
               }
@@ -475,37 +476,56 @@ void loop()
       {
         if (encodersPosition[i] < encodersLastValue[i]) // Encoder ClockWise Turn
         {
-          if (encoderType == 0 && encoderValues[0] == 0) // If is a System Action AND master volume selected
+          if (encoderType == 0) // If is a System Action AND master volume selected
           {
             Consumer.write(MEDIA_VOL_UP);
+            //Consumer.write(HID_CONSUMER_FAST_FORWARD);
           }
-          else if (encoderType == 0 && encoderValues[0] == 1) // If is a System Action AND master volume selected
+          else if (encoderType == 2) // If is a key action
           {
-            Consumer.write(HID_CONSUMER_FAST_FORWARD);
+            Keyboard.write(encoderValues[1]); // get the ascii code, and press the key
+          }
+        }
+        else // Encoder Anti-ClockWise Turn
+        {
+          if (encoderType == 0)
+          {
+            Consumer.write(MEDIA_VOL_DOWN);
+            //Consumer.write(HID_CONSUMER_REWIND);
           }
           else if (encoderType == 1) // If is a key action
           {
             Keyboard.write(encoderValues[0]); // get the ascii code, and press the key
           }
         }
-        else // Encoder Anti-ClockWise Turn
-        {
-          if (encoderType == 0 && encoderValues[0] == 0)
-          {
-            Consumer.write(MEDIA_VOL_DOWN);
-          }
-          else if (encoderType == 0 && encoderValues[0] == 1) // If is a System Action AND master volume selected
-          {
-            Consumer.write(HID_CONSUMER_REWIND);
-          }
-          else if (encoderType == 1) // If is a key action
-          {
-            Keyboard.write(encoderValues[1]); // get the ascii code, and press the key
-          }
-        }
         encodersLastValue[i] = encodersPosition[i];
       }
+
+      if(!digitalRead(encodersPins[i * 3 + 2])) // if the encoder is pressed
+      {
+        if (encoderPressed[i])
+        {
+          // alredy press
+        }
+        else
+        {
+          // first press
+          if(encoderType == 0) // If is master volume selected
+          {
+            Consumer.write(MEDIA_VOL_MUTE);
+          }
+-          {
+            Keyboard.write(encoderValues[2]); // get the ascii code, and press the key
+          }
+          encoderPressed[i] = true;
+        }
+      }
+      else
+      {
+        encoderPressed[i] = false;
+      }
     }
+
 
     if (!digitalRead(encoderKey1Pin)) // When encoder 1 key is pressed
     {
