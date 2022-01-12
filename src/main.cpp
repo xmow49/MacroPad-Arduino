@@ -89,6 +89,27 @@ String getArgs(String data, char separator, short index)
   return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
+char asciiToHex(char ascii)
+{
+  // This function convert ascii to hex
+  if (ascii <= 57 && ascii >= 48) // 0 - 9
+  {
+    return ascii - 48;
+  }
+  else if (ascii <= 70 && ascii >= 65) // A - F
+  {
+    return ascii - 55;
+  }
+  else if (ascii <= 97 && ascii >= 90) // a - f
+  {
+    return ascii - 87;
+  }
+  else
+  {
+    return 0;
+  }
+}
+
 void encoder(byte encoder) // function for the encoder interrupt
 {
   static unsigned long lastInterruptTime = 0;
@@ -113,7 +134,7 @@ void encoder(byte encoder) // function for the encoder interrupt
 void saveToEEPROM() // Save all config into the atmega eeprom
 {
   EEPROM.put(0, macropadConfig);
-  Serial.write(sizeof(macropadConfig));
+  // Serial.println(sizeof(macropadConfig));
 }
 
 void readEEPROM() // Read all config from the atmega eeprom and store it into the temp config
@@ -165,7 +186,11 @@ void centerText(String txt) // Display the text in the center of the screen
 
   configFont();
 
-  oled.getTextBounds(txt, 0, 0, &x1, &y1, &textW, &textH);                 // get the size of the text and store it into textH and textW
+  oled.getTextBounds(txt, 0, 0, &x1, &y1, &textW, &textH); // get the size of the text and store it into textH and textW
+  if (txt = "")
+  {
+    textW = 0;
+  }
   oled.setCursor((SCREEN_WIDTH - textW) / 2, (SCREEN_HEIGHT + textH) / 2); // set the cursor in the good position
 
   oled.println(txt); // print the text
@@ -181,6 +206,11 @@ void displayOnScreen(String txt) // display test on screen, check if is center t
   uint16_t textH;
   oled.setFont(&FreeSans12pt7b);
   oled.getTextBounds(txt, 0, 0, &x1, &y1, &textW, &textH); // get the size of the text and store it into textH and textW
+
+  if (txt = "")
+  {
+    textW = 0;
+  }
 
   if (textW > SCREEN_WIDTH - 5) // if the text width is larger than the screen, the text is scrolling
   {
@@ -223,17 +253,27 @@ void setProfile(byte profile)
   currentProfile = profile;
   selectProfileMode = false;
   String txt = macropadConfig.profile[profile].name;
-  if (txt.length() == 0)
+
+  for(int i = 0; i < 6; i++)
+  {
+    Serial.println("Profile " + String(profile) + " : " + String(macropadConfig.profile[i].name));
+  }
+  if (txt.length() == 0 || txt == "")
   {
     txt = "Profil " + String((currentProfile + 1));
+  }
+  Serial.println(txt.length());
+  for(unsigned int i = 0; i < txt.length(); i++)
+  {
+    Serial.println(txt.charAt(i));
   }
   displayOnScreen(txt);
   setRGB(macropadConfig.profile[currentProfile].color[0], macropadConfig.profile[currentProfile].color[1], macropadConfig.profile[currentProfile].color[2]);
 
   //// oled.drawRoundRect(0, 3, LOGO_HEIGHT + 2, LOGO_HEIGHT + 2, 5, WHITE);
-  // oled.drawRamBitmap(1, 4, LOGO_HEIGHT, LOGO_WIDTH, WHITE, macropadConfig.profile[currentProfile].icon, 72);
+  //oled.drawRamBitmap(1, 4, LOGO_HEIGHT, LOGO_WIDTH, WHITE, macropadConfig.profile[currentProfile].icon, 72);
 
-  // oled.display();
+  oled.display();
 }
 
 void clearProfileNumber()
@@ -290,12 +330,13 @@ void selectProfile()        // comment this function
     oled.setCursor(90, 25);
     clearProfileNumber();
     oled.print(strProfile);
+    Serial.println(strProfile);
 
     encodersLastValue[1] = encodersPosition[1];
     selectProfileMillis = millis() + 500;
     oled.display();
   }
-  if (!digitalRead(encoderKey1Pin))
+  if (!digitalRead(encoderKey1Pin)) // select the profile when the encoder key is pressed
   {
     setProfile(currentProfile);
   }
@@ -354,6 +395,7 @@ void setup()
   readEEPROM();
 
   setProfile(0);
+  serialMsg.reserve(110);
 }
 
 bool encoderAState[3];
@@ -411,7 +453,7 @@ void loop()
           {
             for (byte j = 0; j < 3; j++) // for each key
             {
-              //Serial.println("Value:" + String(keyValues[j]));
+              // Serial.println("Value:" + String(keyValues[j]));
               if (keyValues[j] == 0 && keyValues[j] != 60) // if no key and key 60 (<) because impoved keyboard
               {
               }
@@ -479,7 +521,7 @@ void loop()
           if (encoderType == 0) // If is a System Action AND master volume selected
           {
             Consumer.write(MEDIA_VOL_UP);
-            //Consumer.write(HID_CONSUMER_FAST_FORWARD);
+            // Consumer.write(HID_CONSUMER_FAST_FORWARD);
           }
           else if (encoderType == 2) // If is a key action
           {
@@ -491,7 +533,7 @@ void loop()
           if (encoderType == 0)
           {
             Consumer.write(MEDIA_VOL_DOWN);
-            //Consumer.write(HID_CONSUMER_REWIND);
+            // Consumer.write(HID_CONSUMER_REWIND);
           }
           else if (encoderType == 1) // If is a key action
           {
@@ -501,31 +543,31 @@ void loop()
         encodersLastValue[i] = encodersPosition[i];
       }
 
-      if(!digitalRead(encodersPins[i * 3 + 2])) // if the encoder is pressed
-      {
-        if (encoderPressed[i])
-        {
-          // alredy press
-        }
-        else
-        {
-          // first press
-          if(encoderType == 0) // If is master volume selected
-          {
-            Consumer.write(MEDIA_VOL_MUTE);
-          }
--          {
-            Keyboard.write(encoderValues[2]); // get the ascii code, and press the key
-          }
-          encoderPressed[i] = true;
-        }
-      }
-      else
-      {
-        encoderPressed[i] = false;
-      }
+      //   if (!digitalRead(encodersPins[i * 3 + 2])) // if the encoder is pressed
+      //   {
+      //     if (encoderPressed[i])
+      //     {
+      //       // alredy press
+      //     }
+      //     else
+      //     {
+      //       // first press
+      //       if (encoderType == 0) // If is master volume selected
+      //       {
+      //         Consumer.write(MEDIA_VOL_MUTE);
+      //       }
+      //       if (encoderType == 2)
+      //       {
+      //         Keyboard.write(encoderValues[2]); // get the ascii code, and press the key
+      //       }
+      //       encoderPressed[i] = true;
+      //     }
+      //   }
+      //   else
+      //   {
+      //     encoderPressed[i] = false;
+      //   }
     }
-
 
     if (!digitalRead(encoderKey1Pin)) // When encoder 1 key is pressed
     {
@@ -575,7 +617,7 @@ void loop()
     delay(10);
     Keyboard.releaseAll();
     delay(100);
-    Keyboard.print(F("https://github.com/xmow49/MacroPad-Software/releases")); // enter the url
+    //////////////////////////Keyboard.print(F("https://github.com/xmow49/MacroPad-Software/releases")); // enter the url
     delay(100);
     Keyboard.write(KEY_ENTER); // go to the url
   }
@@ -715,24 +757,68 @@ void loop()
         }
       }
     }
-    else if (command == "I") // set icon
-    {
-    }
+    // else if (command == "I") // set icon
+    // {
+    //   bool endOfTransmission = false;
+    //   unsigned short tab = 0;
+    //   char data[2];
+    //   while (endOfTransmission == false)
+    //   {
+    //     if (Serial.available() > 0)
+    //     {
+    //       char c = Serial.read();
+    //       if (c == '\n')
+    //       {
+    //         endOfTransmission = true;
+    //       }
+    //       else
+    //       {
+    //         // macropadConfig.profile[arg[0]].icon[tab] = c;
+    //         if (tab % 2 == 0)
+    //         {
+    //           data[0] = asciiToHex(c);
+    //         }
+    //         else
+    //         {
+    //           //transform the ascii to hex
+
+    //           data[1] = asciiToHex(c);
+    //           Serial.print(data[0]);
+    //           Serial.println(data[1]);
+    //           // create hex number
+    //           unsigned char hex = data[0] << 8 | data[1];
+    //           Serial.print("Result: ");
+    //           Serial.println(hex);
+    //           macropadConfig.profile[arg[0]].icon[tab] = hex;
+    //         }
+
+    //         // combine 2 hex digits into a byte
+
+    //         tab++;
+    //       }
+    //     }
+    //   }
+
+    //   for (int t = 0; t < LOGO_SIZE; t++)
+    //   {
+    //     Serial.println(macropadConfig.profile[arg[0]].icon[t]);
+    //   }
+
+    //   MEMORY_PRINT_FREERAM;
+    // }
     else if (command == "A") // set profile
     {
       setProfile(arg[0]);
     }
     else if (command == "B") // set profile
     {
-      byte profile = arg[0];                    // Get the profile number
-      String name = getArgs(serialMsg, '"', 1); // Get the name of the profile
-      name.remove(name.length() - 1);           // Remove the last "
+      byte profile = arg[0];                                                                     // Get the profile number
+      String name = serialMsg.substring(serialMsg.indexOf('"') + 1, serialMsg.lastIndexOf('"')); // Get the name of the profile
       if (name.length() > 10)
       {
         name.remove(11);
       }
       name.toCharArray(macropadConfig.profile[profile].name, name.length() + 1); // Save the name of the profile
-      Serial.println(macropadConfig.profile[profile].name);                      // Display the name of the profile
       if (profile == currentProfile)
       {
         setProfile(profile);
@@ -754,6 +840,5 @@ void loop()
 
     serialMsg = "";
   }
-
-  scrollText();
+  ////////////scrollText();
 }
