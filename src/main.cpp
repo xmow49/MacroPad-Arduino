@@ -124,141 +124,12 @@ void encoder(byte encoder) // function for the encoder interrupt
 
 void saveToEEPROM() // Save all config into the atmega eeprom
 {
-  short eepromAddress = 0; // eeprom address
-  //--------------------Save Profiles---------------------------------------------------------
-  for (byte profile = 0; profile <= 5; profile++)
-  {
-    //---------------------Save Keys---------------------------
-    for (byte i = 0; i < 6; i++)
-    {
-      // Key mode
-      EEPROM.put(eepromAddress, macropadConfig.profile[profile].keys[i].type);
-      eepromAddress += sizeof(macropadConfig.profile[profile].keys[i].type);
-
-      for (byte nValue = 0; nValue <= 2; nValue++)
-      {
-
-        EEPROM.put(eepromAddress, macropadConfig.profile[profile].keys[i].values[nValue]);
-        eepromAddress += sizeof(macropadConfig.profile[profile].keys[i].values[nValue]);
-      }
-    }
-
-    //---------------------Save Encoders---------------------------
-    for (byte i = 0; i < 3; i++)
-    {
-      // Save Mode
-      EEPROM.put(eepromAddress, macropadConfig.profile[profile].encoders[i].type);
-      eepromAddress += sizeof(macropadConfig.profile[profile].encoders[i].type);
-
-      for (byte nValue = 0; nValue <= 2; nValue++)
-      {
-        EEPROM.put(eepromAddress, macropadConfig.profile[profile].encoders[i].values[nValue]);
-        eepromAddress += sizeof(macropadConfig.profile[profile].encoders[i].values[nValue]);
-      }
-    }
-
-    //---------------------Save Profile Color ---------------------------
-    for (byte color = 0; color < 3; color++)
-    {
-      byte value = macropadConfig.profile[profile].color[color];
-      if (value == NULL)
-        value = 0;
-      EEPROM.put(eepromAddress, value);
-      eepromAddress += sizeof(value);
-    }
-    //---------------------Save Profile Name ---------------------------
-    EEPROM.put(eepromAddress, macropadConfig.profile[profile].name);
-    eepromAddress += sizeof(macropadConfig.profile[profile].name);
-    // Serial.println(macropadConfig.profile[profile].name);
-    // Serial.println(sizeof(macropadConfig.profile[profile].name));
-  }
-
-#ifdef VERBOSE
-  Serial.print("EEPROM size: ");
-  Serial.println(eepromAddress);
-#endif
+  EEPROM.put(0, macropadConfig);
 }
 
 void readEEPROM() // Read all config from the atmega eeprom and store it into the temp config
 {
-#ifdef VERBOSE
-  Serial.println("-----Read from EEPROM-----");
-#endif
-  short eepromAddress = 0;
-  for (byte profile = 0; profile <= 5; profile++)
-  {
-#ifdef VERBOSE
-    String txt = "---- Profile " + String(profile) + " ----";
-    Serial.println(txt);
-#endif
-    for (byte i = 0; i < 6; i++) // foreach keys
-    {
-#ifdef VERBOSE
-      Serial.print("Key");
-      Serial.print(i);
-      Serial.print(" ");
-
-      Serial.print(keyConf[i][profile].mode);
-      Serial.print(":");
-      Serial.print(keyConf[i][profile].value[0]);
-      Serial.print(",");
-      Serial.print(keyConf[i][profile].value[1]);
-      Serial.print(",");
-      Serial.println(keyConf[i][profile].value[2]);
-#endif
-      // Get mode
-      EEPROM.get(eepromAddress, macropadConfig.profile[profile].keys[i].type); // save key type
-      eepromAddress += sizeof(macropadConfig.profile[profile].keys[i].type);
-
-      for (byte nValue = 0; nValue <= 2; nValue++)
-      {
-        EEPROM.get(eepromAddress, macropadConfig.profile[profile].keys[i].values[nValue]); // save key value
-        eepromAddress += sizeof(macropadConfig.profile[profile].keys[i].values[nValue]);
-      }
-    }
-    for (byte i = 0; i < 3; i++) // foreach encoder
-    {
-#ifdef VERBOSE
-      Serial.print("Encoder");
-      Serial.print(i);
-      Serial.print(" ");
-      Serial.print(encoderConfig[i][profile].mode);
-      Serial.print(":");
-      Serial.print(encoderConfig[i][profile].value[0]);
-      Serial.print(":");
-      Serial.print(encoderConfig[i][profile].value[1]);
-      Serial.print(":");
-      Serial.println(encoderConfig[i][profile].value[3]);
-
-#endif
-
-      // Get Mode
-      EEPROM.get(eepromAddress, macropadConfig.profile[profile].encoders[i].type); //
-      eepromAddress += sizeof(macropadConfig.profile[profile].encoders[i].type);
-
-      for (byte nValue = 0; nValue <= 2; nValue++)
-      {
-        EEPROM.get(eepromAddress, macropadConfig.profile[profile].encoders[i].values[nValue]);
-        eepromAddress += sizeof(macropadConfig.profile[profile].encoders[i].values[nValue]);
-      }
-    }
-
-    //---------------------Save Profile Color ---------------------------
-    for (byte color = 0; color < 3; color++)
-    {
-      byte value;
-      EEPROM.get(eepromAddress, value);
-      eepromAddress += sizeof(value);
-      if (value == NULL)
-        value = 0;
-      macropadConfig.profile[profile].color[color] = value;
-    }
-
-    //---------------------Save Profile Name ---------------------------
-    EEPROM.get(eepromAddress, macropadConfig.profile[profile].name);
-    eepromAddress += sizeof(macropadConfig.profile[profile].name);
-    Serial.println(macropadConfig.profile[profile].name);
-  }
+  EEPROM.get(0, macropadConfig);
 }
 
 void configFont()
@@ -517,7 +388,7 @@ void setup()
 
   delay(500);
 
-  // readEEPROM();
+  readEEPROM();
 
   // textOnDisplay.reserve(100);
   setProfile(0);
