@@ -9,7 +9,7 @@ type:
  - 3 : Key Combination CLICK
  - 4 : Midi
 
-E 1 0 0 #Master volume
+E 0 0 0 0 #Master volume
 E 2 0 1 #Next/previos
 
 E n 2 65 #KeyA

@@ -12,9 +12,9 @@
 #include <Adafruit_SSD1306.h>
 #include <Fonts/FreeSans12pt7b.h>
 
-bool textScrolling = false; // Store the state of text scrolling
-short textX;                // Store the current X position of the text
-String textOnDisplay;       // Store the current scolling text
+bool textScrolling = false;             // Store the state of text scrolling
+short textX;                            // Store the current X position of the text
+char textOnDisplay[SCREEN_TEXT_LENGTH]; // Store the text to be displayed
 
 struct Encoders // Prepare encoders configstructure
 {
@@ -30,7 +30,7 @@ struct Keys // Prepare keys config structure
 
 struct Profile
 {
-  char name[20]; // profile name
+  char name[PROFILE_TEXT_LENGTH]; // profile name
   unsigned char icon[LOGO_SIZE];
   byte color[3];
   Encoders encoders[ENCODERS_COUNT];
@@ -84,6 +84,10 @@ String getArgs(String data, char separator, short index)
   }
 
   return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
+}
+
+void getStrArg(char serialMsg[], char charArg[], char arg[], unsigned short serialMsgIndex)
+{
 }
 
 char asciiToHex(char ascii)
@@ -148,13 +152,13 @@ void configFont()
 
 void scrollText() // function to scoll the text into the display
 {
-  if (tickTime <= millis()) // every 30 ms
+  if (textScrolling)
   {
-    tickTime = millis() + 30;
-
-    if (textScrolling)
+    if (tickTime <= millis()) // every 30 ms
     {
-      short textRtn = -12 * textOnDisplay.length();
+      tickTime = millis() + 30;
+
+      short textRtn = -10 * strlen(textOnDisplay);
       if (textX > textRtn)
         textX -= 1;
       else
@@ -173,55 +177,88 @@ void scrollText() // function to scoll the text into the display
   }
 }
 
-void centerText(String txt) // Display the text in the center of the screen
+// void centerText(const char txt[]) // Display the text in the center of the screen
+// {
+//   oled.clearDisplay(); // clear the display
+//   int16_t x1;
+//   int16_t y1;
+//   uint16_t textW = 0;
+//   uint16_t textH = 0;
+
+//   configFont();
+
+//   oled.getTextBounds(txt, 0, 0, &x1, &y1, &textW, &textH); // get the size of the text and store it into textH and textW
+
+//   Serial.print("strlen(txt) = ");
+//   Serial.println(strlen(txt));
+//   if (strlen(txt) == 0)
+//   {
+//     textW = 0;
+//     textH = 0;
+//   }
+//   oled.setCursor((SCREEN_WIDTH - textW) / 2, (SCREEN_HEIGHT + 18) / 2); // set the cursor in the good position
+//   oled.println(txt);                                                    // print the text
+//   oled.display();                                                       // send to screen
+//   textScrolling = false;
+// }
+
+void displayOnScreen(const char txt[]) // display test on screen, check if is center text or scrolling text
 {
-  oled.clearDisplay(); // clear the display
-  int16_t x1;
-  int16_t y1;
-  uint16_t textW = 0;
-  uint16_t textH = 0;
 
-  configFont();
-
-  // oled.getTextBounds(txt, 0, 0, &x1, &y1, &textW, &textH); // get the size of the text and store it into textH and textW
-  // if (txt = "")
-  // {
-  //   textW = 0;
-  // }
-  // oled.setCursor((SCREEN_WIDTH - textW) / 2, (SCREEN_HEIGHT + textH) / 2); // set the cursor in the good position
-  oled.setCursor(0,20);
-  oled.println(txt); // print the text
-  oled.display();    // send to screen
-  textScrolling = false;
-}
-
-void displayOnScreen(String txt) // display test on screen, check if is center text or scrolling text
-{
-
-  Serial.println("Display: " + txt);
-  Serial.println("txt length: " + String(txt.length()));
   int16_t x1;
   int16_t y1;
   uint16_t textW;
   uint16_t textH;
-  oled.setFont(&FreeSans12pt7b);
+
+  configFont();
+
   oled.getTextBounds(txt, 0, 0, &x1, &y1, &textW, &textH); // get the size of the text and store it into textH and textW
 
-  if (txt = "")
+  if (strlen(txt) == 0)
   {
     textW = 0;
+    textH = 0;
   }
-  Serial.println("calcul: " + String(textW > SCREEN_WIDTH - 5));
-  if (textW > SCREEN_WIDTH - 5) // if the text width is larger than the screen, the text is scrolling
+
+  Serial.print("Display:");
+  Serial.println("toto");
+
+  Serial.print("txt length: ");
+  Serial.println(strlen(txt));
+
+  Serial.print("textW: ");
+  Serial.println(textW);
+  Serial.print("textH: ");
+  Serial.println(textH);
+
+  Serial.print("SCREEN_WIDTH - 5: ");
+  Serial.println(SCREEN_WIDTH - 5);
+
+  if (textW > SCREEN_WIDTH - 10) // if the text width is larger than the screen, the text is scrolling
   {
+    Serial.println("Scrolling");
     textScrolling = true;
-    textOnDisplay = txt;
+
+    strncpy(textOnDisplay, txt, strlen(txt) + 1); // copy the text into the textOnDisplay (+1 \0)
     textX = 0;
     tickTime = millis();
   }
   else
   {
-    centerText(txt);
+    Serial.println("Text centre");
+    oled.clearDisplay();
+    textScrolling = false;
+
+    Serial.print("Preparing cursor ");
+    oled.setCursor((SCREEN_WIDTH - textW) / 2, (SCREEN_HEIGHT + textH) / 2); // set the cursor in the good position
+    Serial.println("...Done");
+
+    Serial.print("Preparing print ");
+    oled.print(txt); // print the text
+    Serial.println("...Done");
+
+    oled.display();
+
   }
 }
 
@@ -252,19 +289,30 @@ void setProfile(byte profile)
 {
   currentProfile = profile;
   selectProfileMode = false;
-  String txt = macropadConfig.profile[profile].name;
-  Serial.println("Set Profile: " + txt);
+  // char txt[20] = macropadConfig.profile[profile].name;
 
-  if (txt.length() == 0 || txt == "")
-  {
-    txt = "Profil " + String((currentProfile + 1));
-  }
+  // Serial.println("Set Profile: " + txt);
+
+  // if (txt.length() == 0 || txt == "")
+  // {
+  //   txt = "Profil " + String((currentProfile + 1));
+  // }
 
   // for(unsigned int i = 0; i < txt.length(); i++)
   // {
   //   Serial.println(txt.charAt(i));
   // }
-  displayOnScreen(txt);
+
+  displayOnScreen(macropadConfig.profile[profile].name);
+
+  for (int i = 0; i < 6; i++)
+  {
+    Serial.print("Profile ");
+    Serial.print(i);
+    Serial.print(" : ");
+    Serial.println(macropadConfig.profile[i].name);
+  }
+
   setRGB(macropadConfig.profile[currentProfile].color[0], macropadConfig.profile[currentProfile].color[1], macropadConfig.profile[currentProfile].color[2]);
 
   //// oled.drawRoundRect(0, 3, LOGO_HEIGHT + 2, LOGO_HEIGHT + 2, 5, WHITE);
@@ -380,13 +428,7 @@ void setup()
 
   setRGB(0, 255, 0);
 
-  //displayOnScreen(F("Macropad "));
-  
-  configFont();
-  oled.setCursor(0, 20);
-  oled.println(F("Macropad"));
-  oled.display();
-
+  // displayOnScreen("Macropad");
 
   delay(500);
 
@@ -396,15 +438,229 @@ void setup()
 
   readEEPROM();
 
-  setProfile(0);
+  // setProfile(0);
+
+  // oled.clearDisplay();
+  // oled.setFont(&FreeSans12pt7b);    // set the font
+  // oled.setTextSize(1);              // set the font size to 1
+  // oled.setTextColor(SSD1306_WHITE); // Write text in white
+  // oled.setCursor(0, 0);             // set the cursor in the good position
+  // oled.println("Macropad");      // print the text
+  // oled.display();
 }
 
 bool encoderAState[3];
 
 void loop()
 {
+  //------------------------------------------------Serial --------------------------------------------------
+  static char serialMsg[100];
+  static unsigned short serialMsgIndex = 0;
+  if (Serial.available() > 0) // if incomming bytes
+  {
+    serialMsg[serialMsgIndex] = (char)Serial.read(); // read the byte and store it in the array
+    serialMsgIndex++;                                // increment the index
+  }
+  else if (serialMsg[0] != 0) // msg not empty --> all serial msg has been read
+  {
+    //-------------------Serial msg processing-------------------
+    serialMsg[serialMsgIndex - 1] = 0; // remove char 13
+    serialMsg[serialMsgIndex - 2] = 0; // remove char 10
+    serialMsgIndex--;                  // remove last char
 
-  for (byte i = 0; i < 3; i++) // forech encoder, check if thre is a nex position and change call the fonction
+    bool validCmd = true;        // command exist ? (default : yes)
+    char command = serialMsg[0]; // get the command (first char)
+
+    char charArg[6][10]; // separate the arguments (space char is used as separator)
+    short arg[6];        // convert the arguments to short
+
+    //------------------------Get Arguments ------------------------------
+    for (unsigned int i = 2, lastArgIndex = 2, argIndex = 0; i < serialMsgIndex; i++) // foreach caracter in serialMsg
+    {
+      if (serialMsg[i] == ' ' || i == serialMsgIndex - 1) // if we have a space
+      {
+        for (unsigned int j = lastArgIndex; j <= i; j++) // foreach caracter from last arg to now
+        {
+          charArg[argIndex][j - lastArgIndex] = serialMsg[j]; // save the caracter in the array of arguments
+        }
+
+        arg[argIndex] = atoi(charArg[argIndex]); // convert the char array to int
+        lastArgIndex = i + 1;                    // skip the space
+        argIndex++;                              // next arg
+      }
+    }
+
+    //-------------------------Processing command-------------------------
+    if (command == 'P') // Ping
+    {
+      Serial.println("P"); // Pong
+    }
+    else if (command == 'T') // Set Text
+    {
+      char *txt = &serialMsg[2]; // remove the command and the space (2 first char)
+      displayOnScreen(txt);
+    }
+    else if (command == 'S') // save-config command
+    {
+      saveToEEPROM(); // save the config in the EEPROM
+    }
+    else if (command == 'R') // read-config command
+    {
+      readEEPROM(); // read the config from the EEPROM
+    }
+    else if (command == 'Z') // reset all the config to 0
+    {
+      for (byte profile = 0; profile <= 5; profile++)
+      {
+        char strProfile = '0' + profile;                                                       // convert the profile number to char
+        char txt[PROFILE_TEXT_LENGTH] = {'P', 'r', 'o', 'f', 'i', 'l', ' ', strProfile, '\0'}; // create the profile text
+        strncpy(macropadConfig.profile[profile].name, txt, PROFILE_TEXT_LENGTH);               // copy the profile text in the profile name config
+
+        macropadConfig.profile[profile].color[0] = 0; // reset the color
+        macropadConfig.profile[profile].color[1] = 0; // reset the color
+        macropadConfig.profile[profile].color[2] = 0; // reset the color
+
+        memset(macropadConfig.profile[profile].icon, 0, sizeof(macropadConfig.profile[profile].icon)); // reset the icon
+
+        for (byte i = 0; i < 3; i++) // reset all encoders
+        {
+          macropadConfig.profile[profile].encoders[i].type = -1;
+          for (byte j = 0; j < 3; j++)
+          {
+            macropadConfig.profile[profile].encoders[i].values[j] = -1;
+          }
+        }
+
+        for (byte i = 0; i < 6; i++) // reset all keys
+        {
+          macropadConfig.profile[profile].keys[i].type = -1;
+          for (byte j = 0; j < 3; j++)
+          {
+            macropadConfig.profile[profile].keys[i].values[j] = -1;
+          }
+        }
+      }
+    }
+
+    else if (command == 'K') // Set Key: K <profile> <n key> <type> <value> <value optional> <value optional>
+    {
+      Serial.println("setKey");
+      macropadConfig.profile[arg[0]].keys[arg[1]].type = arg[2]; // Set the type of the key
+      for (byte i = 0; i < 3; i++)                               // foreach value in the command
+      {
+        macropadConfig.profile[arg[0]].keys[arg[1]].values[i] = arg[i + 3]; // Set the value of the key
+      }
+    }
+
+    else if (command == 'E') // Set encoder action: E <profile> <n encoder> <type> <value> <value optional> <value optional>
+    {
+      macropadConfig.profile[arg[0]].encoders[arg[1]].type = arg[2]; // Get the mode and save it in the config
+      for (byte i = 0; i < 3; i++)                                   // for all values, save it in the config
+      {
+        macropadConfig.profile[arg[0]].encoders[arg[1]].values[i] = arg[i + 3]; // Save Values
+      }
+    }
+    else if (command == 'C') // C <profile> <Red: 0 - 255> <Green: 0 - 255> <Blue: 0 - 255>
+    {
+      byte profile = arg[0];
+      for (byte i = 0; i < 3; i++)
+      {
+        macropadConfig.profile[profile].color[i] = arg[i + 1];
+      }
+      if (profile == currentProfile)
+      {
+        setRGB(arg[1], arg[2], arg[3]); // Set RGB LED color to rgb value from the command :
+      }
+    }
+
+    else if (command == 'A') // set profile
+    {
+      setProfile(arg[0]); // set the profile
+    }
+    else if (command == 'B') // set profile Name
+    {
+      byte profile = arg[0]; // Get the profile number
+
+      char *name = &serialMsg[4]; // remove the command, space, profile numbre, space (4 first char)
+
+      strncpy(macropadConfig.profile[profile].name, name, PROFILE_TEXT_LENGTH); // copy the profile name in the config
+
+      if (profile == currentProfile) // if its the current profile
+      {
+        setProfile(profile); // update the screen
+      }
+    }
+    // else if (command == 'I') // set icon
+    // {
+    //   bool endOfTransmission = false;
+    //   unsigned short tab = 0;
+    //   char data[2];
+    //   while (endOfTransmission == false)
+    //   {
+    //     if (Serial.available() > 0)
+    //     {
+    //       char c = Serial.read();
+    //       if (c == '\n')
+    //       {
+    //         endOfTransmission = true;
+    //       }
+    //       else
+    //       {
+    //         // macropadConfig.profile[arg[0]].icon[tab] = c;
+    //         if (tab % 2 == 0)
+    //         {
+    //           data[0] = asciiToHex(c);
+    //         }
+    //         else
+    //         {
+    //           //transform the ascii to hex
+
+    //           data[1] = asciiToHex(c);
+    //           Serial.print(data[0]);
+    //           Serial.println(data[1]);
+    //           // create hex number
+    //           unsigned char hex = data[0] << 8 | data[1];
+    //           Serial.print("Result: ");
+    //           Serial.println(hex);
+    //           macropadConfig.profile[arg[0]].icon[tab] = hex;
+    //         }
+
+    //         // combine 2 hex digits into a byte
+
+    //         tab++;
+    //       }
+    //     }
+    //   }
+
+    //   for (int t = 0; t < LOGO_SIZE; t++)
+    //   {
+    //     Serial.println(macropadConfig.profile[arg[0]].icon[t]);
+    //   }
+
+    //   MEMORY_PRINT_FREERAM;
+    // }
+    else
+    {
+      validCmd = false; // the command is not valid
+    }
+
+    if (validCmd)
+    {
+      Serial.println("1"); // ok
+    }
+    else
+    {
+      Serial.println("0"); // error
+    }
+
+    serialMsgIndex = 0;                      // reset the index
+    memset(serialMsg, 0, sizeof(serialMsg)); // clear the serialMsg buffer
+
+  } // end of Serial
+
+  //------------------------------------------------Encoders --------------------------------------------------
+  // rotary Encoder
+  for (byte i = 0; i < 3; i++) // forech encoder , check if thre is a next position and change call the fonction
   {
     if (digitalRead(encodersPins[i * 3]) == 0)
     {
@@ -431,22 +687,26 @@ void loop()
   }
   else // Default mode
   {
-    // Foreach Keys check the state, and do the action if yes
-    for (byte i = 0; i < 6; i++)
+    //------------------------------------------------KEYS --------------------------------------------------
+    for (byte i = 0; i < 6; i++) // Foreach Keys, check the state, and do the action the key is pressed
     {
-      if (digitalRead(keysPins[i]))
+      if (digitalRead(keysPins[i])) // if key pressed
       {
         if (keyPressed[i])
-        { // if the key is already pressed
+        {
+          // if the key is already pressed
         }
         else
         {
-          Serial.println("K" + String(i));
+          char key = '0' + i;                // convert the key number to char
+          char strKey[3] = {'K', key, '\0'}; // create the command
+          Serial.println(strKey);            // send the command to the serial
 
-          short keyType = macropadConfig.profile[currentProfile].keys[i].type;
-          short keyValues[3];
-          memcpy(keyValues, macropadConfig.profile[currentProfile].keys[i].values, 6); // 2bytes * 3 values = 6 bytes
-          if (keyType == -1)
+          short keyType = macropadConfig.profile[currentProfile].keys[i].type; // get the type of the key
+          short keyValues[3];                                                  // create the array of values
+          // memcpy(keyValues, macropadConfig.profile[currentProfile].keys[i].values, 6); // 2bytes * 3 values = 6 bytes
+
+          if (keyType == -1) // if the type = -1
           {
             // Disable the key
           }
@@ -512,6 +772,7 @@ void loop()
     {
       short encoderType = macropadConfig.profile[currentProfile].encoders[i].type;
       short encoderValues[3];
+
       memcpy(encoderValues, macropadConfig.profile[currentProfile].encoders[i].values, 6); // 2bytes * 3 values
 
       if (encodersPosition[i] != encodersLastValue[i]) // If Encoder New Value
@@ -542,31 +803,6 @@ void loop()
         }
         encodersLastValue[i] = encodersPosition[i];
       }
-
-      //   if (!digitalRead(encodersPins[i * 3 + 2])) // if the encoder is pressed
-      //   {
-      //     if (encoderPressed[i])
-      //     {
-      //       // alredy press
-      //     }
-      //     else
-      //     {
-      //       // first press
-      //       if (encoderType == 0) // If is master volume selected
-      //       {
-      //         Consumer.write(MEDIA_VOL_MUTE);
-      //       }
-      //       if (encoderType == 2)
-      //       {
-      //         Keyboard.write(encoderValues[2]); // get the ascii code, and press the key
-      //       }
-      //       encoderPressed[i] = true;
-      //     }
-      //   }
-      //   else
-      //   {
-      //     encoderPressed[i] = false;
-      //   }
     }
 
     if (!digitalRead(encoderKey1Pin)) // When encoder 1 key is pressed
@@ -600,291 +836,27 @@ void loop()
         encoderMillis = millis() + 1500;
       }
     }
-
-    if (digitalRead(encoderKey1Pin)) // When encoder 1 key is relese
+    else // When encoder 1 key is relese
     {
       // Do the action
       encoderPressed[1] = false;
     }
   }
 
-  if (!digitalRead(encoderKey0Pin) && !digitalRead(encoderKey1Pin) && !digitalRead(encoderKey2Pin)) // install the software
-  {
-    Consumer.write(ConsumerKeycode(0x223)); // open default web Browser
-    delay(1000);
-    Keyboard.press(KEY_LEFT_CTRL); // focus the url with CTRL + L
-    Keyboard.press(KEY_L);
-    delay(10);
-    Keyboard.releaseAll();
-    delay(100);
-    //////////////////////////Keyboard.print(F("https://github.com/xmow49/MacroPad-Software/releases")); // enter the url
-    delay(100);
-    Keyboard.write(KEY_ENTER); // go to the url
-  }
+  // download the software
+  //  if (!digitalRead(encoderKey0Pin) && !digitalRead(encoderKey1Pin) && !digitalRead(encoderKey2Pin)) // install the software
+  //  {
+  //    Consumer.write(ConsumerKeycode(0x223)); // open default web Browser
+  //    delay(1000);
+  //    Keyboard.press(KEY_LEFT_CTRL); // focus the url with CTRL + L
+  //    Keyboard.press(KEY_L);
+  //    delay(10);
+  //    Keyboard.releaseAll();
+  //    delay(100);
+  //    //////////////////////////Keyboard.print(F("https://github.com/xmow49/MacroPad-Software/releases")); // enter the url
+  //    delay(100);
+  //    Keyboard.write(KEY_ENTER); // go to the url
+  //}
 
-  static char serialMsg[50];
-  static unsigned short serialMsgIndex = 0;
-  if (Serial.available() > 0)
-  {
-    serialMsg[serialMsgIndex] = (char)Serial.read();
-    // Serial.println(serialMsg[serialMsgIndex], DEC);
-    //  Serial.println("Index: " + String(serialMsgIndex));
-    //  Serial.print("Caratere Actuel: ");
-    //  Serial.println(serialMsg[serialMsgIndex], DEC);
-
-    // Serial.println(strcat("message:", serialMsg));
-
-    serialMsgIndex++;
-    // Serial.println("---------");
-  }
-  else if (serialMsg[0] != 0) // msg not empty
-  {
-    Serial.print("All message received : ");
-    Serial.println(serialMsg);
-
-    bool validCmd = true;
-    char command = serialMsg[0];
-
-    if (command == 'P') // Ping
-    {
-      Serial.println("P"); // Pong
-    }
-    else if (command == 'T') // Set Text
-    {
-      for (unsigned int i = 0; i < serialMsgIndex; i++)
-      {
-        serialMsg[i] = serialMsg[i + 2];
-      }
-      Serial.print("text to print: ");
-      Serial.println(serialMsg);
-      centerText(serialMsg);
-    }
-    else if (command == 'S') // save-config command
-    {
-      saveToEEPROM();
-    }
-    else if (command == 'R') // read-config command
-    {
-      readEEPROM();
-    }
-    else if (command == 'Z') // reset all the config to 0
-    {
-      for (byte profile = 0; profile <= 5; profile++)
-      {
-        String txt = "Profile " + String(profile) + " :";
-        txt.toCharArray(macropadConfig.profile[profile].name, 20);
-        macropadConfig.profile[profile].color[0] = 0;
-        macropadConfig.profile[profile].color[1] = 0;
-        macropadConfig.profile[profile].color[2] = 0;
-
-        memset(macropadConfig.profile[profile].icon, 0, sizeof(macropadConfig.profile[profile].icon));
-
-        for (byte i = 0; i < 3; i++)
-        {
-          macropadConfig.profile[currentProfile].encoders[i].type = -1;
-          // encoderConfig[i][profile].mode = 0;
-          for (byte j = 0; j < 3; j++)
-          {
-            macropadConfig.profile[currentProfile].encoders[i].values[j] = -1;
-          }
-        }
-
-        for (byte i = 0; i < 6; i++)
-        {
-          macropadConfig.profile[currentProfile].keys[i].type = -1;
-          for (byte j = 0; j < 3; j++)
-          {
-            macropadConfig.profile[currentProfile].keys[i].values[j] = -1;
-          }
-        }
-      }
-    }
-    else
-    {
-      char charArg[6][10];
-      short arg[6];
-
-      //------------------------Get Arguments ------------------------------
-      for (unsigned int i = 2, lastArgIndex = 2, argIndex = 0; i < serialMsgIndex; i++) // foreach caracter
-      {
-        if (serialMsg[i] == ' ' || i == serialMsgIndex - 1) // if we have a space
-        {
-          for (unsigned int j = lastArgIndex; j <= i; j++) // foreach caracter last arg --> now
-          {
-            charArg[argIndex][j - lastArgIndex] = serialMsg[j]; // save the caracter
-          }
-
-          arg[argIndex] = atoi(charArg[argIndex]); // convert the char array to int
-          lastArgIndex = i + 1;                    // skip the space
-          argIndex++;                              // next arg
-        }
-      }
-
-      //-------------------------------------------------------------
-      for (int i = 0; i < 5; i++)
-      {
-        Serial.print("arg[");
-        Serial.print(i);
-        Serial.print("] = ");
-        Serial.println(arg[i]);
-      }
-
-      if (command == 'K') // Set Key: K <profile> <n key> <type> <value> <value optional> <value optional>
-      {
-        macropadConfig.profile[arg[0]].keys[arg[1]].type = arg[2]; // Set the type of the key
-        for (byte i = 0; i < 3; i++)                               // foreach value in the command
-        {
-          macropadConfig.profile[arg[0]].keys[arg[1]].values[i] = arg[i + 3]; // Set the value of the key
-        }
-      }
-
-      else if (command == 'E') // Set encoder action: E <profile> <n encoder> <type> <value> <value optional> <value optional>
-      {
-        macropadConfig.profile[arg[0]].encoders[arg[1]].type = arg[2]; // Get the mode and save it in the config
-        for (byte i = 0; i < 3; i++)                                   // for all values, save it in the config
-        {
-          macropadConfig.profile[arg[0]].encoders[arg[1]].values[i] = arg[i + 3]; // Save Values
-        }
-      }
-
-#ifdef VERBOSE
-      else if (command == 'G') // Get config command
-      {
-        for (byte profile = 0; profile <= 5; profile++)
-        {
-
-          String txt = "---- Profile " + String(profile) + " ----";
-          Serial.println(txt);
-
-          for (byte i = 0; i < 6; i++) // for all keys, get the config and display it
-          {
-            // Serial.print("Key");
-            // Serial.print(i);
-            // Serial.print(" ");
-            // Serial.print(keyConf[i][profile].mode);
-            // Serial.print(" ");
-            // Serial.print(keyConf[i][profile].value[0]);
-            // Serial.print(":");
-            // Serial.print(keyConf[i][profile].value[1]);
-            // Serial.print(":");
-            // Serial.println(keyConf[i][profile].value[2]);
-          }
-          for (byte i = 0; i < 3; i++) // for all encoders, get the config and display it
-          {
-            // Serial.print("Encoder");
-            // Serial.print(i);
-            // Serial.print(" ");
-            // Serial.print(encoderConfig[i][profile].mode);
-            // Serial.print(" ");
-            // Serial.print(encoderConfig[i][profile].value[0]);
-            // Serial.print(":");
-            // Serial.print(encoderConfig[i][profile].value[1]);
-            // Serial.print(":");
-            // Serial.println(encoderConfig[i][profile].value[2]);
-          }
-        }
-      }
-#endif
-
-      else if (command == 'C') // C <profile> <Red: 0 - 255> <Green: 0 - 255> <Blue: 0 - 255>
-      {
-        byte profile = arg[0];
-        for (byte i = 0; i < 3; i++)
-        {
-          macropadConfig.profile[profile].color[i] = arg[i + 1];
-        }
-        if (profile == currentProfile)
-        {
-          setRGB(arg[1], arg[2], arg[3]); // Set RGB LED color to rgb value from the command :
-        }
-      }
-
-      // else if (command == 'I') // set icon
-      // {
-      //   bool endOfTransmission = false;
-      //   unsigned short tab = 0;
-      //   char data[2];
-      //   while (endOfTransmission == false)
-      //   {
-      //     if (Serial.available() > 0)
-      //     {
-      //       char c = Serial.read();
-      //       if (c == '\n')
-      //       {
-      //         endOfTransmission = true;
-      //       }
-      //       else
-      //       {
-      //         // macropadConfig.profile[arg[0]].icon[tab] = c;
-      //         if (tab % 2 == 0)
-      //         {
-      //           data[0] = asciiToHex(c);
-      //         }
-      //         else
-      //         {
-      //           //transform the ascii to hex
-
-      //           data[1] = asciiToHex(c);
-      //           Serial.print(data[0]);
-      //           Serial.println(data[1]);
-      //           // create hex number
-      //           unsigned char hex = data[0] << 8 | data[1];
-      //           Serial.print("Result: ");
-      //           Serial.println(hex);
-      //           macropadConfig.profile[arg[0]].icon[tab] = hex;
-      //         }
-
-      //         // combine 2 hex digits into a byte
-
-      //         tab++;
-      //       }
-      //     }
-      //   }
-
-      //   for (int t = 0; t < LOGO_SIZE; t++)
-      //   {
-      //     Serial.println(macropadConfig.profile[arg[0]].icon[t]);
-      //   }
-
-      //   MEMORY_PRINT_FREERAM;
-      // }
-      else if (command == 'A') // set profile
-      {
-        setProfile(arg[0]);
-      }
-      else if (command == 'B') // set profile
-      {
-        byte profile = arg[0]; // Get the profile number
-        String name = "";      // serialMsg.substring(serialMsg.indexOf('"') + 1, serialMsg.lastIndexOf('"')); // Get the name of the profile
-
-        if (name.length() > 10)
-        {
-          name.remove(11);
-        }
-        name.toCharArray(macropadConfig.profile[profile].name, name.length() + 1); // Save the name of the profile
-        if (profile == currentProfile)
-        {
-          setProfile(profile);
-        }
-      }
-      else
-      {
-        validCmd = false;
-      }
-    }
-
-    if (validCmd)
-    {
-      Serial.println("1"); // ok
-    }
-    else
-    {
-      Serial.println("0"); // error
-    }
-    // command = "";
-
-    serialMsgIndex = 0;                      // reset the index
-    memset(serialMsg, 0, sizeof(serialMsg)); // clear the serialMsg buffer
-  }
-  ////////////scrollText();
+scrollText();
 }

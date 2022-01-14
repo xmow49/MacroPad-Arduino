@@ -42,7 +42,9 @@ const byte PROGMEM encoderKey2Pin = A3;
 #define LOGO_SIZE 72   // Bytes
 #define PROFILE_LOGO_RADIUS 5
 
-//#define PARSE_TIMEOUT 1000 // Serial read timeout
+#define SCREEN_TEXT_LENGTH 50
+#define PROFILE_TEXT_LENGTH 20
+
 
 // const unsigned char wrench[72] = {
 // 	0x00, 0x00, 0x00, 0x07, 0xc0, 0x00, 0x07, 0xf0, 0x00, 0x01, 0xf0, 0x00, 0x01, 0xf8, 0x00, 0x40,
