@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <config.h> //config file
-#include <MemoryUsage.h>
+//#include <MemoryUsage.h>
 
 #define HID_CUSTOM_LAYOUT
 #define LAYOUT_FRENCH
@@ -202,7 +202,7 @@ void scrollText() // function to scoll the text into the display
 //   textScrolling = false;
 // }
 
-void displayOnScreen(const char txt[]) // display test on screen, check if is center text or scrolling text
+void displayOnScreen(const char txt[SCREEN_TEXT_LENGTH]) // display test on screen, check if is center text or scrolling text
 {
 
   int16_t x1;
@@ -221,7 +221,7 @@ void displayOnScreen(const char txt[]) // display test on screen, check if is ce
   }
 
   Serial.print("Display:");
-  Serial.println("toto");
+  Serial.println(txt);
 
   Serial.print("txt length: ");
   Serial.println(strlen(txt));
@@ -246,19 +246,17 @@ void displayOnScreen(const char txt[]) // display test on screen, check if is ce
   else
   {
     Serial.println("Text centre");
-    oled.clearDisplay();
     textScrolling = false;
+    oled.clearDisplay();
 
     Serial.print("Preparing cursor ");
     oled.setCursor((SCREEN_WIDTH - textW) / 2, (SCREEN_HEIGHT + textH) / 2); // set the cursor in the good position
     Serial.println("...Done");
 
     Serial.print("Preparing print ");
-    oled.print(txt); // print the text
+    oled.println(txt); // print the text
     Serial.println("...Done");
-
     oled.display();
-
   }
 }
 
@@ -467,7 +465,8 @@ void loop()
     serialMsg[serialMsgIndex - 1] = 0; // remove char 13
     serialMsg[serialMsgIndex - 2] = 0; // remove char 10
     serialMsgIndex--;                  // remove last char
-
+    
+    displayOnScreen(serialMsg);
     bool validCmd = true;        // command exist ? (default : yes)
     char command = serialMsg[0]; // get the command (first char)
 
@@ -497,8 +496,9 @@ void loop()
     }
     else if (command == 'T') // Set Text
     {
-      char *txt = &serialMsg[2]; // remove the command and the space (2 first char)
-      displayOnScreen(txt);
+      // char *txt = &serialMsg[2]; // remove the command and the space (2 first char)
+      //  strcpy(textOnDisplay, txt);
+      //displayOnScreen(serialMsg);
     }
     else if (command == 'S') // save-config command
     {
@@ -858,5 +858,5 @@ void loop()
   //    Keyboard.write(KEY_ENTER); // go to the url
   //}
 
-scrollText();
+  scrollText();
 }
