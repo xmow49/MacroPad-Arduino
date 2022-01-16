@@ -192,31 +192,6 @@ void scrollText() // function to scoll the text into the display
   }
 }
 
-// void centerText(const char txt[]) // Display the text in the center of the screen
-// {
-//   oled.clearDisplay(); // clear the display
-//   int16_t x1;
-//   int16_t y1;
-//   uint16_t textW = 0;
-//   uint16_t textH = 0;
-
-//   configFont();
-
-//   oled.getTextBounds(txt, 0, 0, &x1, &y1, &textW, &textH); // get the size of the text and store it into textH and textW
-
-//   Serial.print("strlen(txt) = ");
-//   Serial.println(strlen(txt));
-//   if (strlen(txt) == 0)
-//   {
-//     textW = 0;
-//     textH = 0;
-//   }
-//   oled.setCursor((SCREEN_WIDTH - textW) / 2, (SCREEN_HEIGHT + 18) / 2); // set the cursor in the good position
-//   oled.println(txt);                                                    // print the text
-//   oled.display();                                                       // send to screen
-//   textScrolling = false;
-// }
-
 void displayOnScreen(const char txt[]) // display test on screen, check if is center text or scrolling text
 {
 
@@ -235,23 +210,23 @@ void displayOnScreen(const char txt[]) // display test on screen, check if is ce
     textH = 0;
   }
 
-  Serial.print(F("Display: "));
-  Serial.println(txt);
+  // Serial.print(F("Display: "));
+  // Serial.println(txt);
 
-  Serial.print(F("txt length: "));
-  Serial.println(strlen(txt));
+  // Serial.print(F("txt length: "));
+  // Serial.println(strlen(txt));
 
-  Serial.print(F("textW: "));
-  Serial.println(textW);
-  Serial.print(F("textH: "));
-  Serial.println(textH);
+  // Serial.print(F("textW: "));
+  // Serial.println(textW);
+  // Serial.print(F("textH: "));
+  // Serial.println(textH);
 
-  Serial.print(F("SCREEN_WIDTH - 5: "));
-  Serial.println(SCREEN_WIDTH - 5);
+  // Serial.print(F("SCREEN_WIDTH - 5: "));
+  // Serial.println(SCREEN_WIDTH - 5);
 
   if (textW > SCREEN_WIDTH - 10) // if the text width is larger than the screen, the text is scrolling
   {
-    Serial.println(F("Scrolling"));
+    // Serial.println(F("Scrolling"));
     textScrolling = true;
 
     strncpy(textOnDisplay, txt, strlen(txt) + 1); // copy the text into the textOnDisplay (+1 \0)
@@ -260,19 +235,17 @@ void displayOnScreen(const char txt[]) // display test on screen, check if is ce
   }
   else
   {
-
-    // OK
-    Serial.println(F("Text centre"));
+    // Serial.println(F("Text centre"));
     textScrolling = false;
     oled.clearDisplay();
 
-    Serial.print(F("Preparing cursor "));
+    // Serial.print(F("Preparing cursor "));
     oled.setCursor((SCREEN_WIDTH - textW) / 2, (SCREEN_HEIGHT + textH) / 2); // set the cursor in the good position
-    Serial.println(F("...Done"));
+    // Serial.println(F("...Done"));
 
-    Serial.print(F("Preparing print "));
+    // Serial.print(F("Preparing print "));
     oled.println(txt); // print the text
-    Serial.println(F("...Done"));
+    // Serial.println(F("...Done"));
     oled.display();
   }
 }
@@ -313,27 +286,12 @@ void setProfile(byte profile)
   //   txt = "Profil " + String((currentProfile + 1));
   // }
 
-  // for(unsigned int i = 0; i < txt.length(); i++)
-  // {
-  //   Serial.println(txt.charAt(i));
-  // }
-
-  // displayOnScreen(macropadConfig.profile[profile].name);
-
-  for (int i = 0; i < 6; i++)
-  {
-    Serial.print("Profile ");
-    Serial.print(i);
-    Serial.print(" : ");
-    Serial.println(macropadConfig.profile[i].name);
-  }
+  displayOnScreen(macropadConfig.profile[profile].name);
 
   setRGB(macropadConfig.profile[currentProfile].color[0], macropadConfig.profile[currentProfile].color[1], macropadConfig.profile[currentProfile].color[2]);
 
   //// oled.drawRoundRect(0, 3, LOGO_HEIGHT + 2, LOGO_HEIGHT + 2, 5, WHITE);
   // oled.drawRamBitmap(1, 4, LOGO_HEIGHT, LOGO_WIDTH, WHITE, macropadConfig.profile[currentProfile].icon, 72);
-
-  oled.display();
 }
 
 void clearProfileNumber()
@@ -398,6 +356,8 @@ void selectProfile()        // comment this function
   if (!digitalRead(encoderKey1Pin)) // select the profile when the encoder key is pressed
   {
     setProfile(currentProfile);
+    encoderPressed[1] = false;
+    encoderMillis = millis(); //reset 2s timer
   }
 }
 
@@ -444,7 +404,7 @@ void setup()
     pinMode(keysPins[i], INPUT);
   }
   // Encoders
-  for (byte i = 0; i < 3; i++)
+  for (byte i = 0; i < 9; i++)
   {
     pinMode(encodersPins[i], INPUT);
   }
@@ -468,9 +428,11 @@ void setup()
   oled.clearDisplay();
   oled.display();
 
-  delay(500);
+  delay(200);
 
   setRGB(255, 0, 0);
+
+  displayOnScreen("Macropad");
 
   //------------Interrupts----------
   // attachInterrupt(digitalPinToInterrupt(encoderA0Pin), encoder0, LOW);
@@ -479,29 +441,19 @@ void setup()
 
   Consumer.begin(); // Start HID
 
-  delay(500);
+  delay(200);
 
   setRGB(0, 255, 0);
 
-  // displayOnScreen("Macropad");
-
-  delay(500);
+  delay(200);
 
   setRGB(0, 0, 255);
 
-  delay(500);
+  delay(200);
 
   readEEPROM();
 
-  // setProfile(0);
-
-  // oled.clearDisplay();
-  // oled.setFont(&FreeSans12pt7b);    // set the font
-  // oled.setTextSize(1);              // set the font size to 1
-  // oled.setTextColor(SSD1306_WHITE); // Write text in white
-  // oled.setCursor(0, 0);             // set the cursor in the good position
-  // oled.println("Macropad");      // print the text
-  // oled.display();
+  setProfile(0);
 }
 
 bool encoderAState[3];
@@ -701,163 +653,162 @@ void loop()
   if (selectProfileMode) // when the select profile mode is enable
   {
     selectProfile();
+    return;
   }
-  else // Default mode
+  //-------------------------------------------------Default mode --------------------------------------------------
+  //------------------------------------------------KEYS --------------------------------------------------
+  for (byte i = 0; i < 6; i++) // Foreach Keys, check the state, and do the action the key is pressed
   {
-    //------------------------------------------------KEYS --------------------------------------------------
-    for (byte i = 0; i < 6; i++) // Foreach Keys, check the state, and do the action the key is pressed
+    if (digitalRead(keysPins[i])) // if key pressed
     {
-      if (digitalRead(keysPins[i])) // if key pressed
+      if (keyPressed[i])
       {
-        if (keyPressed[i])
+        // if the key is already pressed
+      }
+      else
+      {
+        char key = '0' + i;                // convert the key number to char
+        char strKey[3] = {'K', key, '\0'}; // create the command
+        Serial.println(strKey);            // send the command to the serial
+
+        short keyType = macropadConfig.profile[currentProfile].keys[i].type; // get the type of the key
+        short keyValues[3];                                                  // create the array of values
+        // memcpy(keyValues, macropadConfig.profile[currentProfile].keys[i].values, 6); // 2bytes * 3 values = 6 bytes
+
+        if (keyType == -1) // if the type = -1
         {
-          // if the key is already pressed
+          // Disable the key
         }
-        else
+        else if (keyType == 0) // Key Combination
         {
-          char key = '0' + i;                // convert the key number to char
-          char strKey[3] = {'K', key, '\0'}; // create the command
-          Serial.println(strKey);            // send the command to the serial
-
-          short keyType = macropadConfig.profile[currentProfile].keys[i].type; // get the type of the key
-          short keyValues[3];                                                  // create the array of values
-          // memcpy(keyValues, macropadConfig.profile[currentProfile].keys[i].values, 6); // 2bytes * 3 values = 6 bytes
-
-          if (keyType == -1) // if the type = -1
+          for (byte j = 0; j < 3; j++) // for each key
           {
-            // Disable the key
-          }
-          else if (keyType == 0) // Key Combination
-          {
-            for (byte j = 0; j < 3; j++) // for each key
+            if (keyValues[j] == 0 && keyValues[j] != 60) // if no key and key 60 (<) because impoved keyboard
             {
-              if (keyValues[j] == 0 && keyValues[j] != 60) // if no key and key 60 (<) because impoved keyboard
-              {
-              }
-              else if (keyValues[j] <= 32 && keyValues[j] >= 8) // function key (spaces, shift, etc)
-              {
-                Keyboard.press(keyValues[j]);
-              }
-              else if (keyValues[j] <= 90 && keyValues[j] >= 65) // alaphabet
-              {                                                  // ascii normal code exept '<' (60)
-                Keyboard.press(keyValues[j] + 32);               // Normal character + 32 (ascii Upercase to lowcase)
-              }
-              else if (keyValues[j] <= 57 && keyValues[j] >= 48) // numbers
-              {
-                Keyboard.press(keyValues[j]); // Normal number
-              }
-              else
-              {
-                Keyboard.press(KeyboardKeycode(keyValues[j])); // Improved keyboard
-              }
             }
+            else if (keyValues[j] <= 32 && keyValues[j] >= 8) // function key (spaces, shift, etc)
+            {
+              Keyboard.press(keyValues[j]);
+            }
+            else if (keyValues[j] <= 90 && keyValues[j] >= 65) // alaphabet
+            {                                                  // ascii normal code exept '<' (60)
+              Keyboard.press(keyValues[j] + 32);               // Normal character + 32 (ascii Upercase to lowcase)
+            }
+            else if (keyValues[j] <= 57 && keyValues[j] >= 48) // numbers
+            {
+              Keyboard.press(keyValues[j]); // Normal number
+            }
+            else
+            {
+              Keyboard.press(KeyboardKeycode(keyValues[j])); // Improved keyboard
+            }
+          }
 
-            // while (digitalRead(keysPins[i]))
-            // {
-            //   if (currentMillis + repeatDelay <= millis() / 100)
-            //   {
-            //     delay(50);
-            //   }
-            // }
-          }
-          else if (keyType == 1) // System Action
-          {
-            Consumer.write(ConsumerKeycode(keyValues[0]));
-            currentMillis = millis() / 100;
-            // while (digitalRead(keysPins[i]))
-            // {
-            //   if (currentMillis + repeatDelay <= millis() / 100)
-            //   {
-            //     Consumer.write(keyConf[i][currentProfile].value[0]);
-            //     delay(50);
-            //   }
-            // }
-          }
+          // while (digitalRead(keysPins[i]))
+          // {
+          //   if (currentMillis + repeatDelay <= millis() / 100)
+          //   {
+          //     delay(50);
+          //   }
+          // }
         }
-
-        keyPressed[i] = true;
+        else if (keyType == 1) // System Action
+        {
+          Consumer.write(ConsumerKeycode(keyValues[0]));
+          currentMillis = millis() / 100;
+          // while (digitalRead(keysPins[i]))
+          // {
+          //   if (currentMillis + repeatDelay <= millis() / 100)
+          //   {
+          //     Consumer.write(keyConf[i][currentProfile].value[0]);
+          //     delay(50);
+          //   }
+          // }
+        }
       }
-      else
+
+      keyPressed[i] = true;
+    }
+    else
+    {
+      keyPressed[i] = false;
+      Keyboard.releaseAll();
+    }
+  }
+
+  // Check Encoders
+  for (byte i = 0; i < 3; i++) // For every encoder
+  {
+    short encoderType = macropadConfig.profile[currentProfile].encoders[i].type;
+    short encoderValues[3];
+
+    memcpy(encoderValues, macropadConfig.profile[currentProfile].encoders[i].values, 6); // 2bytes * 3 values
+
+    if (encodersPosition[i] != encodersLastValue[i]) // If Encoder New Value
+    {
+      if (encodersPosition[i] < encodersLastValue[i]) // Encoder ClockWise Turn
       {
-        keyPressed[i] = false;
-        Keyboard.releaseAll();
+        if (encoderType == 0) // If is a System Action AND master volume selected
+        {
+          Consumer.write(MEDIA_VOL_UP);
+          // Consumer.write(HID_CONSUMER_FAST_FORWARD);
+        }
+        else if (encoderType == 2) // If is a key action
+        {
+          Keyboard.write(encoderValues[1]); // get the ascii code, and press the key
+        }
       }
-    }
-
-    // Check Encoders
-    for (byte i = 0; i < 3; i++) // For every encoder
-    {
-      short encoderType = macropadConfig.profile[currentProfile].encoders[i].type;
-      short encoderValues[3];
-
-      memcpy(encoderValues, macropadConfig.profile[currentProfile].encoders[i].values, 6); // 2bytes * 3 values
-
-      if (encodersPosition[i] != encodersLastValue[i]) // If Encoder New Value
+      else // Encoder Anti-ClockWise Turn
       {
-        if (encodersPosition[i] < encodersLastValue[i]) // Encoder ClockWise Turn
+        if (encoderType == 0)
         {
-          if (encoderType == 0) // If is a System Action AND master volume selected
-          {
-            Consumer.write(MEDIA_VOL_UP);
-            // Consumer.write(HID_CONSUMER_FAST_FORWARD);
-          }
-          else if (encoderType == 2) // If is a key action
-          {
-            Keyboard.write(encoderValues[1]); // get the ascii code, and press the key
-          }
+          Consumer.write(MEDIA_VOL_DOWN);
+          // Consumer.write(HID_CONSUMER_REWIND);
         }
-        else // Encoder Anti-ClockWise Turn
+        else if (encoderType == 1) // If is a key action
         {
-          if (encoderType == 0)
-          {
-            Consumer.write(MEDIA_VOL_DOWN);
-            // Consumer.write(HID_CONSUMER_REWIND);
-          }
-          else if (encoderType == 1) // If is a key action
-          {
-            Keyboard.write(encoderValues[0]); // get the ascii code, and press the key
-          }
+          Keyboard.write(encoderValues[0]); // get the ascii code, and press the key
         }
-        encodersLastValue[i] = encodersPosition[i];
       }
+      encodersLastValue[i] = encodersPosition[i];
     }
+  }
 
-    if (!digitalRead(encoderKey1Pin)) // When encoder 1 key is pressed
-    {
+  if (!digitalRead(encoderKey1Pin)) // When encoder 1 key is pressed
+  {
 
-      if (encoderPressed[1])
-      { // if the encoder is already pressed
-        // wait
-        // Serial.println("Already press");
-        if (encoderMillis <= millis() && selectProfileMode == false)
+    if (encoderPressed[1])
+    { // if the encoder is already pressed
+      // wait
+      // Serial.println("Already press");
+      if (encoderMillis <= millis() && selectProfileMode == false)
+      {
+        // 2 second after the begin of the press
+        // Serial.println("2S --> profile set");
+        // set profile menu
+        selectProfileMode = true;
+        printCurrentProfile();
+        oled.drawBitmap(0, 10, profile_left, PROFILE_H, PROFILE_W, WHITE);
+        oled.drawBitmap(119, 10, profile_right, PROFILE_H, PROFILE_W, WHITE);
+        oled.display();
+        selectProfileMillis = millis();
+        while (!digitalRead(encoderKey1Pin))
         {
-          // 2 second after the begin of the press
-          // Serial.println("2S --> profile set");
-          // set profile menu
-          selectProfileMode = true;
-          printCurrentProfile();
-          oled.drawBitmap(0, 10, profile_left, PROFILE_H, PROFILE_W, WHITE);
-          oled.drawBitmap(119, 10, profile_right, PROFILE_H, PROFILE_W, WHITE);
-          oled.display();
-          selectProfileMillis = millis();
-          while (!digitalRead(encoderKey1Pin))
-          {
-            /* code */
-          }
+          /* code */
         }
       }
-      else
-      { // first press of the encoder
-        // Serial.println("First press");
-        encoderPressed[1] = true;
-        encoderMillis = millis() + 1500;
-      }
     }
-    else // When encoder 1 key is relese
-    {
-      // Do the action
-      encoderPressed[1] = false;
+    else
+    { // first press of the encoder
+      // Serial.println("First press");
+      encoderPressed[1] = true;
+      encoderMillis = millis() + 1500;
     }
+  }
+  else // When encoder 1 key is relese
+  {
+    // Do the action
+    encoderPressed[1] = false;
   }
 
   // download the software
