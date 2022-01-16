@@ -277,14 +277,6 @@ void setProfile(byte profile)
 {
   currentProfile = profile;
   selectProfileMode = false;
-  // char txt[20] = macropadConfig.profile[profile].name;
-
-  // Serial.println("Set Profile: " + txt);
-
-  // if (txt.length() == 0 || txt == "")
-  // {
-  //   txt = "Profil " + String((currentProfile + 1));
-  // }
 
   displayOnScreen(macropadConfig.profile[profile].name);
 
@@ -292,6 +284,8 @@ void setProfile(byte profile)
 
   //// oled.drawRoundRect(0, 3, LOGO_HEIGHT + 2, LOGO_HEIGHT + 2, 5, WHITE);
   // oled.drawRamBitmap(1, 4, LOGO_HEIGHT, LOGO_WIDTH, WHITE, macropadConfig.profile[currentProfile].icon, 72);
+
+  Serial.println("A" + String(profile)); // send the profile to the software
 }
 
 void clearProfileNumber()
@@ -357,7 +351,7 @@ void selectProfile()        // comment this function
   {
     setProfile(currentProfile);
     encoderPressed[1] = false;
-    encoderMillis = millis(); //reset 2s timer
+    encoderMillis = millis(); // reset 2s timer
   }
 }
 
@@ -472,10 +466,18 @@ void loop()
   {
 
     //-------------------Serial msg processing-------------------
-    serialMsg[serialMsgIndex - 1] = 0; // remove char 13
-    serialMsg[serialMsgIndex - 2] = 0; // remove char 10
-    serialMsgIndex--;                  // remove last char
+    for (byte i = 0; i < strlen(serialMsg); i++)
+    {
+      if (serialMsg[i] == 13 || serialMsg[i] == 10) // if the char is a new line
+      {
+        serialMsg[i] = 0; // replace the char by a null char
+        serialMsgIndex--; // remove char
+        break;
+      }
+    }
 
+    serialMsgIndex++; // increment the index (null caracter)
+    
     // displayOnScreen(serialMsg);
 
     bool validCmd = true;        // command exist ? (default : yes)
@@ -540,23 +542,39 @@ void loop()
       }
     }
 
-    else if (command == 'A') // set profile
+    else if (command == 'A') // select/get profile
     {
-      getStrArg(serialMsg, serialMsgIndex, arg); // get the arguments
-      setProfile(arg[0]);                        // set the profile
-    }
-    else if (command == 'B') // set profile Name
-    {
-      getStrArg(serialMsg, serialMsgIndex, arg); // get the arguments
-      byte profile = arg[0];                     // Get the profile number
-
-      char *name = &serialMsg[4]; // remove the command, space, profile numbre, space (4 first char)
-
-      strncpy(macropadConfig.profile[profile].name, name, PROFILE_TEXT_LENGTH); // copy the profile name in the config
-
-      if (profile == currentProfile) // if its the current profile
+      if (strlen(serialMsg) <= 2)
       {
-        setProfile(profile); // update the screen
+        // only command --> request the current profile from the software
+        Serial.println("A" + String(currentProfile));
+      }
+      else // set a value
+      {
+        getStrArg(serialMsg, serialMsgIndex, arg); // get the arguments
+        setProfile(arg[0]);                        // set the profile
+      }
+    }
+    else if (command == 'B') // set/get profile Name
+    {
+      if (strlen(serialMsg) <= 2) // only the command
+      {
+        Serial.println("B" + String(macropadConfig.profile[currentProfile].name));
+      }
+      else // set a value
+      {
+        getStrArg(serialMsg, serialMsgIndex, arg); // get the arguments
+
+        byte profile = arg[0];         // Get the profile number
+        char *newName = &serialMsg[4]; // remove the command, space, profile numbre, space (4 first char)
+
+        strcpy(macropadConfig.profile[profile].name, newName); // set the name
+        // strncpy(macropadConfig.profile[profile].name, name, PROFILE_TEXT_LENGTH); // copy the profile name in the config
+
+        if (profile == currentProfile) // if its the current profile
+        {
+          setProfile(profile); // update the screen
+        }
       }
     }
     else if (command == 'I') // set icon
@@ -614,11 +632,11 @@ void loop()
 
     if (validCmd)
     {
-      Serial.println(F("1")); // ok
+      Serial.println(F("OK")); // ok
     }
     else
     {
-      Serial.println(F("0")); // error
+      Serial.println(F("ERR")); // error
     }
 
     serialMsgIndex = 0; // reset the index
@@ -739,27 +757,30 @@ void loop()
   // Check Encoders
   for (byte i = 0; i < 3; i++) // For every encoder
   {
-    short encoderType = macropadConfig.profile[currentProfile].encoders[i].type;
-    short encoderValues[3];
+    short encoderType = macropadConfig.profile[currentProfile].encoders[i].type;         // get the type of the encoder from the config
+    short encoderValues[3];                                                              // create the array of values from the config
+    memcpy(encoderValues, macropadConfig.profile[currentProfile].encoders[i].values, 6); // get the values from the config (2bytes * 3 values)
 
-    memcpy(encoderValues, macropadConfig.profile[currentProfile].encoders[i].values, 6); // 2bytes * 3 values
-
-    if (encodersPosition[i] != encodersLastValue[i]) // If Encoder New Value
+    if (encodersPosition[i] != encodersLastValue[i]) // If Encoder has been moved from last time
     {
       if (encodersPosition[i] < encodersLastValue[i]) // Encoder ClockWise Turn
       {
-        if (encoderType == 0) // If is a System Action AND master volume selected
+        Serial.println("E" + String(i) + "U"); // Send Encoder Up To the software
+
+        if (encoderType == 0) // If is a System Action type
         {
           Consumer.write(MEDIA_VOL_UP);
           // Consumer.write(HID_CONSUMER_FAST_FORWARD);
         }
-        else if (encoderType == 2) // If is a key action
+        else if (encoderType == 2) // If is a key action (key combination)
         {
           Keyboard.write(encoderValues[1]); // get the ascii code, and press the key
         }
       }
       else // Encoder Anti-ClockWise Turn
       {
+        Serial.println("E" + String(i) + "D"); // Send Encoder Up To the software
+
         if (encoderType == 0)
         {
           Consumer.write(MEDIA_VOL_DOWN);
@@ -770,7 +791,7 @@ void loop()
           Keyboard.write(encoderValues[0]); // get the ascii code, and press the key
         }
       }
-      encodersLastValue[i] = encodersPosition[i];
+      encodersLastValue[i] = encodersPosition[i]; // save the value for the next time
     }
   }
 
