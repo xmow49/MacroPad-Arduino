@@ -42,7 +42,7 @@ const byte PROGMEM encoderKey2Pin = A3;
 #define LOGO_SIZE 72   // Bytes
 #define PROFILE_LOGO_RADIUS 5
 
-#define SCREEN_TEXT_LENGTH 50
+#define SCREEN_TEXT_LENGTH 40
 #define PROFILE_TEXT_LENGTH 20
 
 
