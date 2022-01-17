@@ -58,7 +58,7 @@ bool selectProfileMode = false;      // If is true, all function are disabled, a
 
 // ---- Millis for timer ----
 unsigned long encoderMillis;
-unsigned long selectProfileMillis; // to blink the profile number
+unsigned long selectProfileMillis = 0; // to blink the profile number
 
 byte currentProfile = 0; // Current selected profile is 0 by default
 
@@ -284,8 +284,6 @@ void setProfile(byte profile)
 
   //// oled.drawRoundRect(0, 3, LOGO_HEIGHT + 2, LOGO_HEIGHT + 2, 5, WHITE);
   // oled.drawRamBitmap(1, 4, LOGO_HEIGHT, LOGO_WIDTH, WHITE, macropadConfig.profile[currentProfile].icon, 72);
-
-  Serial.println("A" + String(profile)); // send the profile to the software
 }
 
 void clearProfileNumber()
@@ -293,65 +291,69 @@ void clearProfileNumber()
   oled.writeFillRect(90, 9, 12, 18, BLACK);
 }
 
-void selectProfile()        // comment this function
-{                           // When select profile mode is active
-  static String strProfile; // String to store the profile name
+void selectProfile() // comment this function
+{                    // When select profile mode is active
   // Profile Number blink:
-  if (selectProfileMillis <= millis())
-  {                                       // wait 500ms
-    oled.setCursor(90, 25);               // set the cursor in the good position
+  if (selectProfileMillis <= millis()) // every 500 ms
+  {
+
     selectProfileMillis = millis() + 500; // wait 500ms
-    clearProfileNumber();                 // clear the profile number
+
     if (profileBlinkState)
     {
       profileBlinkState = false;
-      oled.print(strProfile);
+      oled.setCursor(90, 25);         // set the cursor in the good position
+      oled.print(currentProfile + 1); // print the profile number
     }
     else
     {
-      profileBlinkState = true;
+      clearProfileNumber();
+      profileBlinkState = true; // clear the profile number
     }
     oled.display();
   }
 
   for (byte i = 0; i <= 5; i++) // foreach key
   {
-    if (digitalRead(keysPins[i]))
+    if (digitalRead(keysPins[i])) // if a key is pressed
     {
-      setProfile(i);
+      setProfile(i); // set the profile from the key number
+      Serial.println("A" + String(i)); // send the profile to the software
     }
   }
 
-  if (encodersPosition[1] != encodersLastValue[1])
+  if (encodersPosition[1] != encodersLastValue[1]) // if the center encoder has been turn
   {
-    if (encodersPosition[1] < encodersLastValue[1])
-    { // clockWise
-      if (currentProfile >= 5)
-        currentProfile = 0;
+    if (encodersPosition[1] < encodersLastValue[1]) // if is clockwise
+    {
+      if (currentProfile >= 5) // if the current profile is the last profile
+        currentProfile = 0;    // return to the first profile
       else
-        currentProfile++;
+        currentProfile++; // increment the current profile
     }
     else
     {
-      if (currentProfile <= 0)
-        currentProfile = 5;
+      if (currentProfile <= 0) // if the current profile is the first profile
+        currentProfile = 5;    // return to the last profile
       else
-        currentProfile--;
+        currentProfile--; // decrement the current profile
     }
-    strProfile = String((currentProfile + 1));
+
     oled.setCursor(90, 25);
     clearProfileNumber();
-    oled.print(strProfile);
+    oled.print(currentProfile + 1);
 
     encodersLastValue[1] = encodersPosition[1];
     selectProfileMillis = millis() + 500;
     oled.display();
   }
+
   if (!digitalRead(encoderKey1Pin)) // select the profile when the encoder key is pressed
   {
     setProfile(currentProfile);
     encoderPressed[1] = false;
     encoderMillis = millis(); // reset 2s timer
+    Serial.println("A" + String(currentProfile)); // send the profile to the software
   }
 }
 
@@ -477,13 +479,19 @@ void loop()
     }
 
     serialMsgIndex++; // increment the index (null caracter)
-    
+
     // displayOnScreen(serialMsg);
 
     bool validCmd = true;        // command exist ? (default : yes)
     char command = serialMsg[0]; // get the command (first char)
 
-    short arg[6]; // convert the arguments to short
+    bool softwareReadRequest = false;
+    if (strlen(serialMsg) <= 2)
+    {
+      softwareReadRequest = true;
+    }
+
+    short arg[6]; // store all numerical arguments (max 6)
     //-------------------------Processing command-------------------------
     if (command == 'P') // Ping
     {
@@ -491,9 +499,15 @@ void loop()
     }
     else if (command == 'T') // Set Text
     {
-      char *txt = &serialMsg[2]; // remove the command and the space (2 first char)
-      //  strcpy(textOnDisplay, txt);
-      displayOnScreen(txt);
+      if (softwareReadRequest)
+      {
+        Serial.println(textOnDisplay);
+      }
+      else
+      {
+        char *txt = &serialMsg[2]; // remove the command and the space (2 first char)
+        displayOnScreen(txt);
+      }
     }
     else if (command == 'S') // save-config command
     {
@@ -511,7 +525,6 @@ void loop()
     else if (command == 'K') // Set Key: K <profile> <n key> <type> <value> <value optional> <value optional>
     {
       getStrArg(serialMsg, serialMsgIndex, arg); // get the arguments
-      Serial.println("setKey");
       macropadConfig.profile[arg[0]].keys[arg[1]].type = arg[2]; // Set the type of the key
       for (byte i = 0; i < 3; i++)                               // foreach value in the command
       {
@@ -544,7 +557,7 @@ void loop()
 
     else if (command == 'A') // select/get profile
     {
-      if (strlen(serialMsg) <= 2)
+      if (softwareReadRequest)
       {
         // only command --> request the current profile from the software
         Serial.println("A" + String(currentProfile));
@@ -557,14 +570,13 @@ void loop()
     }
     else if (command == 'B') // set/get profile Name
     {
-      if (strlen(serialMsg) <= 2) // only the command
+      if (softwareReadRequest) // only the command
       {
         Serial.println("B" + String(macropadConfig.profile[currentProfile].name));
       }
       else // set a value
       {
         getStrArg(serialMsg, serialMsgIndex, arg); // get the arguments
-
         byte profile = arg[0];         // Get the profile number
         char *newName = &serialMsg[4]; // remove the command, space, profile numbre, space (4 first char)
 
@@ -641,7 +653,7 @@ void loop()
 
     serialMsgIndex = 0; // reset the index
     serialMsg[0] = 0;
-    // memset(serialMsg, 0, sizeof(serialMsg)); // clear the serialMsg buffer
+    memset(serialMsg, 0, sizeof(serialMsg)); // clear the serialMsg buffer
 
   } // end of Serial
 
@@ -691,7 +703,7 @@ void loop()
 
         short keyType = macropadConfig.profile[currentProfile].keys[i].type; // get the type of the key
         short keyValues[3];                                                  // create the array of values
-        // memcpy(keyValues, macropadConfig.profile[currentProfile].keys[i].values, 6); // 2bytes * 3 values = 6 bytes
+        memcpy(keyValues, macropadConfig.profile[currentProfile].keys[i].values, 6); // 2bytes * 3 values = 6 bytes
 
         if (keyType == -1) // if the type = -1
         {
@@ -812,11 +824,10 @@ void loop()
         oled.drawBitmap(0, 10, profile_left, PROFILE_H, PROFILE_W, WHITE);
         oled.drawBitmap(119, 10, profile_right, PROFILE_H, PROFILE_W, WHITE);
         oled.display();
-        selectProfileMillis = millis();
         while (!digitalRead(encoderKey1Pin))
         {
-          /* code */
         }
+        selectProfileMillis = millis() - 500;
       }
     }
     else
