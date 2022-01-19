@@ -42,8 +42,9 @@ const byte PROGMEM encoderKey2Pin = A3;
 #define LOGO_SIZE 72   // Bytes
 #define PROFILE_LOGO_RADIUS 5
 
-#define SCREEN_TEXT_LENGTH 40
+#define SCREEN_TEXT_LENGTH 70
 #define PROFILE_TEXT_LENGTH 20
+#define SERIAL_TEXT_LENGTH 70
 
 
 // const unsigned char wrench[72] = {

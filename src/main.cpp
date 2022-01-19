@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <config.h> //config file
 #include <MemoryUsage.h>
+#include <Encoder.h>
 
 #define HID_CUSTOM_LAYOUT
 #define LAYOUT_FRENCH
@@ -14,6 +15,7 @@
 
 bool textScrolling = false;             // Store the state of text scrolling
 short textX;                            // Store the current X position of the text
+short textY = 24;                       // Store the current Y position of the text
 char textOnDisplay[SCREEN_TEXT_LENGTH]; // Store the text to be displayed
 
 struct Encoders // Prepare encoders configstructure
@@ -21,13 +23,11 @@ struct Encoders // Prepare encoders configstructure
   byte type;
   short values[3];
 };
-
 struct Keys // Prepare keys config structure
 {
   byte type;
   short values[3];
 };
-
 struct Profile
 {
   char name[PROFILE_TEXT_LENGTH]; // profile name
@@ -35,8 +35,8 @@ struct Profile
   byte color[3];
   Encoders encoders[ENCODERS_COUNT];
   Keys keys[KEYS_COUNT];
+  byte displayType;
 };
-
 struct MacropadConfig
 {
   Profile profile[PROFILES_COUNT];
@@ -44,8 +44,8 @@ struct MacropadConfig
 
 MacropadConfig macropadConfig; // Prepare macropad config structure
 
-int encodersPosition[3] = {50, 50, 50};  // temp virtual position of encoders
-int encodersLastValue[3] = {50, 50, 50}; // Value of encoders
+int encodersPosition[3] = {0, 0, 0}; // temp virtual position of encoders
+// int encodersLastValue[3] = {50, 50, 50}; // Value of encoders
 
 const byte keysPins[6] = {key0Pin, key1Pin, key2Pin, key3Pin, key4Pin, key5Pin};                                                                                   // Pins of all keys
 const byte encodersPins[9] = {encoderA0Pin, encoderB0Pin, encoderKey0Pin, encoderA1Pin, encoderB1Pin, encoderKey1Pin, encoderA2Pin, encoderB2Pin, encoderKey2Pin}; // Pins of all encodes
@@ -126,26 +126,30 @@ char asciiToHex(char ascii)
   }
 }
 
-void encoder(byte encoder) // function for the encoder interrupt
-{
-  static unsigned long lastInterruptTime = 0;
-  unsigned long interruptTime = millis();
+Encoder encoder0(encodersPins[0], encodersPins[1]); // Create encoder 0
+Encoder encoder1(encodersPins[3], encodersPins[4]); // Create encoder 1
+Encoder encoder2(encodersPins[6], encodersPins[7]); // Create encoder 2
 
-  byte pin = encodersPins[encoder * 3 + 1];
+// void encoder(byte encoder) // function for the encoder interrupt
+// {
+//   static unsigned long lastInterruptTime = 0;
+//   unsigned long interruptTime = millis();
 
-  if (interruptTime - lastInterruptTime > 5)
-  {
-    if (digitalRead(pin) == 0) // check the rotation direction
-    {
-      encodersPosition[encoder] = encodersLastValue[encoder] - 10; // anti-clockwise
-    }
-    else
-    {
-      encodersPosition[encoder] = encodersLastValue[encoder] + 10; // clockwise
-    }
-  }
-  lastInterruptTime = interruptTime;
-}
+//   byte pin = encodersPins[encoder * 3 + 1];
+
+//   if (interruptTime - lastInterruptTime > 5)
+//   {
+//     if (digitalRead(pin) == 0) // check the rotation direction
+//     {
+//       encodersPosition[encoder] = encodersLastValue[encoder] - 10; // anti-clockwise
+//     }
+//     else
+//     {
+//       encodersPosition[encoder] = encodersLastValue[encoder] + 10; // clockwise
+//     }
+//   }
+//   lastInterruptTime = interruptTime;
+// }
 
 void saveToEEPROM() // Save all config into the atmega eeprom
 {
@@ -177,14 +181,14 @@ void scrollText() // function to scoll the text into the display
       if (textX > textRtn)
         textX -= 1;
       else
-        textX = -textRtn;
+        textX = 128;
 
       oled.clearDisplay();           // clear the display
       oled.setTextWrap(false);       // disable text warp on the right border
       oled.setFont(&FreeSans12pt7b); // set the default font
       oled.setTextSize(1);
       oled.setTextColor(SSD1306_WHITE);
-      oled.setCursor(textX, ((SCREEN_HEIGHT / 2) + FONT_HEIGHT)); // Center the text
+      oled.setCursor(textX, textY); // Center the text
       oled.println(textOnDisplay);
 
       oled.display(); // print the text
@@ -209,6 +213,7 @@ void displayOnScreen(const char txt[]) // display test on screen, check if is ce
     textW = 0;
     textH = 0;
   }
+  textY = 24; // set the textY to the center of the screen
 
   // Serial.print(F("Display: "));
   // Serial.println(txt);
@@ -229,7 +234,7 @@ void displayOnScreen(const char txt[]) // display test on screen, check if is ce
     // Serial.println(F("Scrolling"));
     textScrolling = true;
 
-    strncpy(textOnDisplay, txt, strlen(txt) + 1); // copy the text into the textOnDisplay (+1 \0)
+    strncpy(textOnDisplay, txt, SCREEN_TEXT_LENGTH); // copy the text into the textOnDisplay (+1 \0)
     textX = 0;
     tickTime = millis();
   }
@@ -278,7 +283,14 @@ void setProfile(byte profile)
   currentProfile = profile;
   selectProfileMode = false;
 
-  displayOnScreen(macropadConfig.profile[profile].name);
+  if (macropadConfig.profile[profile].displayType == 1)
+  { // profile name and custom text (saved in EEPROM)
+    displayOnScreen(macropadConfig.profile[profile].name);
+  }
+  else
+  {
+    displayOnScreen("Waiting Software");
+  }
 
   setRGB(macropadConfig.profile[currentProfile].color[0], macropadConfig.profile[currentProfile].color[1], macropadConfig.profile[currentProfile].color[2]);
 
@@ -317,42 +329,42 @@ void selectProfile() // comment this function
   {
     if (digitalRead(keysPins[i])) // if a key is pressed
     {
-      setProfile(i); // set the profile from the key number
+      setProfile(i);                   // set the profile from the key number
       Serial.println("A" + String(i)); // send the profile to the software
     }
   }
 
-  if (encodersPosition[1] != encodersLastValue[1]) // if the center encoder has been turn
-  {
-    if (encodersPosition[1] < encodersLastValue[1]) // if is clockwise
-    {
-      if (currentProfile >= 5) // if the current profile is the last profile
-        currentProfile = 0;    // return to the first profile
-      else
-        currentProfile++; // increment the current profile
-    }
-    else
-    {
-      if (currentProfile <= 0) // if the current profile is the first profile
-        currentProfile = 5;    // return to the last profile
-      else
-        currentProfile--; // decrement the current profile
-    }
+  // if (encodersPosition[1] != encodersLastValue[1]) // if the center encoder has been turn
+  // {
+  //   if (encodersPosition[1] < encodersLastValue[1]) // if is clockwise
+  //   {
+  //     if (currentProfile >= 5) // if the current profile is the last profile
+  //       currentProfile = 0;    // return to the first profile
+  //     else
+  //       currentProfile++; // increment the current profile
+  //   }
+  //   else
+  //   {
+  //     if (currentProfile <= 0) // if the current profile is the first profile
+  //       currentProfile = 5;    // return to the last profile
+  //     else
+  //       currentProfile--; // decrement the current profile
+  //   }
 
-    oled.setCursor(90, 25);
-    clearProfileNumber();
-    oled.print(currentProfile + 1);
+  //   oled.setCursor(90, 25);
+  //   clearProfileNumber();
+  //   oled.print(currentProfile + 1);
 
-    encodersLastValue[1] = encodersPosition[1];
-    selectProfileMillis = millis() + 500;
-    oled.display();
-  }
+  //   encodersLastValue[1] = encodersPosition[1];
+  //   selectProfileMillis = millis() + 500;
+  //   oled.display();
+  // }
 
   if (!digitalRead(encoderKey1Pin)) // select the profile when the encoder key is pressed
   {
     setProfile(currentProfile);
     encoderPressed[1] = false;
-    encoderMillis = millis(); // reset 2s timer
+    encoderMillis = millis();                     // reset 2s timer
     Serial.println("A" + String(currentProfile)); // send the profile to the software
   }
 }
@@ -404,7 +416,6 @@ void setup()
   {
     pinMode(encodersPins[i], INPUT);
   }
-
   pinMode(ledR, OUTPUT);
   pinMode(ledG, OUTPUT);
   pinMode(ledB, OUTPUT);
@@ -421,6 +432,7 @@ void setup()
       delay(200);
     }
   }
+  // oled.setRotation(2);
   oled.clearDisplay();
   oled.display();
 
@@ -452,17 +464,22 @@ void setup()
   setProfile(0);
 }
 
-bool encoderAState[3];
-
 void loop()
 {
   //------------------------------------------------Serial --------------------------------------------------
-  static char serialMsg[70];
+  static char serialMsg[SERIAL_TEXT_LENGTH];
   static unsigned short serialMsgIndex = 0;
   if (Serial.available() > 0) // if incomming bytes
   {
-    serialMsg[serialMsgIndex] = (char)Serial.read(); // read the byte and store it in the array
-    serialMsgIndex++;                                // increment the index
+    if (serialMsgIndex < SERIAL_TEXT_LENGTH - 1)
+    {
+      serialMsg[serialMsgIndex] = (char)Serial.read(); // read the byte and store it in the array
+      serialMsgIndex++;                                // increment the index
+    }
+    else
+    {
+      char trash = (char)Serial.read();
+    }
   }
   else if (serialMsg[0] != 0) // msg not empty --> all serial msg has been read
   {
@@ -479,8 +496,6 @@ void loop()
     }
 
     serialMsgIndex++; // increment the index (null caracter)
-
-    // displayOnScreen(serialMsg);
 
     bool validCmd = true;        // command exist ? (default : yes)
     char command = serialMsg[0]; // get the command (first char)
@@ -524,7 +539,7 @@ void loop()
 
     else if (command == 'K') // Set Key: K <profile> <n key> <type> <value> <value optional> <value optional>
     {
-      getStrArg(serialMsg, serialMsgIndex, arg); // get the arguments
+      getStrArg(serialMsg, serialMsgIndex, arg);                 // get the arguments
       macropadConfig.profile[arg[0]].keys[arg[1]].type = arg[2]; // Set the type of the key
       for (byte i = 0; i < 3; i++)                               // foreach value in the command
       {
@@ -577,8 +592,8 @@ void loop()
       else // set a value
       {
         getStrArg(serialMsg, serialMsgIndex, arg); // get the arguments
-        byte profile = arg[0];         // Get the profile number
-        char *newName = &serialMsg[4]; // remove the command, space, profile numbre, space (4 first char)
+        byte profile = arg[0];                     // Get the profile number
+        char *newName = &serialMsg[4];             // remove the command, space, profile numbre, space (4 first char)
 
         strcpy(macropadConfig.profile[profile].name, newName); // set the name
         // strncpy(macropadConfig.profile[profile].name, name, PROFILE_TEXT_LENGTH); // copy the profile name in the config
@@ -588,6 +603,12 @@ void loop()
           setProfile(profile); // update the screen
         }
       }
+    }
+    else if (command == 'D')
+    {
+      getStrArg(serialMsg, serialMsgIndex, arg);            // get the arguments
+      byte profile = arg[0];                                // Get the profile number
+      macropadConfig.profile[profile].displayType = arg[1]; // Set the type of the display
     }
     else if (command == 'I') // set icon
     {
@@ -661,22 +682,61 @@ void loop()
   // rotary Encoder
   for (byte i = 0; i < 3; i++) // forech encoder , check if thre is a next position and change call the fonction
   {
-    if (digitalRead(encodersPins[i * 3]) == 0)
+    int encoderPosition;
+    switch (i)
     {
-      if (encoderAState[i])
-      {
-        // alredy press
-      }
-      else
-      {
-        // first press
-        encoder(i);
-        encoderAState[i] = true;
-      }
+    case 0:
+      encoderPosition = encoder0.read();
+      break;
+    case 1:
+      encoderPosition = encoder1.read();
+      break;
+    case 2:
+      encoderPosition = encoder2.read();
+      break;
+    default:
+      break;
     }
-    else
+    if (encoderPosition != encodersPosition[i] && encoderPosition % 4 == 0)
     {
-      encoderAState[i] = false;
+      Serial.println(encoderPosition);
+
+      short encoderType = macropadConfig.profile[currentProfile].encoders[i].type; // get the type of the encoder from the config
+
+      if (encodersPosition[i] < encoderPosition) // Encoder ClockWise Turn
+      {
+        char encoderId = i;
+        char txt[4] = {'E', encoderId, 'U', '\0'}; // create the command to send to the software
+        Serial.println(txt);               // Send Encoder Up To the software
+
+        if (encoderType == 0) // If is a System Action type
+        {
+          Consumer.write(MEDIA_VOL_UP);
+          // Consumer.write(HID_CONSUMER_FAST_FORWARD);
+        }
+        else if (encoderType == 2) // If is a key action (key combination)
+        {
+          Keyboard.write(macropadConfig.profile[currentProfile].encoders[i].values[1]); // get the ascii code, and press the key
+        }
+      }
+      else // Encoder Anti-ClockWise Turn
+      {
+        char encoderId = i;
+        char txt[4] = {'E', encoderId, 'D', '\0'}; // create the command to send to the software
+        Serial.println(txt);               // Send Encoder Down To the software
+
+        if (encoderType == 0)
+        {
+          Consumer.write(MEDIA_VOL_DOWN);
+          // Consumer.write(HID_CONSUMER_REWIND);
+        }
+        else if (encoderType == 1) // If is a key action
+        {
+          Keyboard.write(macropadConfig.profile[currentProfile].encoders[i].values[0]); // get the ascii code, and press the key
+        }
+      }
+
+      encodersPosition[i] = encoderPosition; // save the value for the next time
     }
   }
 
@@ -701,8 +761,8 @@ void loop()
         char strKey[3] = {'K', key, '\0'}; // create the command
         Serial.println(strKey);            // send the command to the serial
 
-        short keyType = macropadConfig.profile[currentProfile].keys[i].type; // get the type of the key
-        short keyValues[3];                                                  // create the array of values
+        short keyType = macropadConfig.profile[currentProfile].keys[i].type;         // get the type of the key
+        short keyValues[3];                                                          // create the array of values
         memcpy(keyValues, macropadConfig.profile[currentProfile].keys[i].values, 6); // 2bytes * 3 values = 6 bytes
 
         if (keyType == -1) // if the type = -1
@@ -763,47 +823,6 @@ void loop()
     {
       keyPressed[i] = false;
       Keyboard.releaseAll();
-    }
-  }
-
-  // Check Encoders
-  for (byte i = 0; i < 3; i++) // For every encoder
-  {
-    short encoderType = macropadConfig.profile[currentProfile].encoders[i].type;         // get the type of the encoder from the config
-    short encoderValues[3];                                                              // create the array of values from the config
-    memcpy(encoderValues, macropadConfig.profile[currentProfile].encoders[i].values, 6); // get the values from the config (2bytes * 3 values)
-
-    if (encodersPosition[i] != encodersLastValue[i]) // If Encoder has been moved from last time
-    {
-      if (encodersPosition[i] < encodersLastValue[i]) // Encoder ClockWise Turn
-      {
-        Serial.println("E" + String(i) + "U"); // Send Encoder Up To the software
-
-        if (encoderType == 0) // If is a System Action type
-        {
-          Consumer.write(MEDIA_VOL_UP);
-          // Consumer.write(HID_CONSUMER_FAST_FORWARD);
-        }
-        else if (encoderType == 2) // If is a key action (key combination)
-        {
-          Keyboard.write(encoderValues[1]); // get the ascii code, and press the key
-        }
-      }
-      else // Encoder Anti-ClockWise Turn
-      {
-        Serial.println("E" + String(i) + "D"); // Send Encoder Up To the software
-
-        if (encoderType == 0)
-        {
-          Consumer.write(MEDIA_VOL_DOWN);
-          // Consumer.write(HID_CONSUMER_REWIND);
-        }
-        else if (encoderType == 1) // If is a key action
-        {
-          Keyboard.write(encoderValues[0]); // get the ascii code, and press the key
-        }
-      }
-      encodersLastValue[i] = encodersPosition[i]; // save the value for the next time
     }
   }
 
