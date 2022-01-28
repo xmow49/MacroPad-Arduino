@@ -116,7 +116,7 @@ char asciiToHex(char ascii)
   {
     return ascii - 55;
   }
-  else if (ascii <= 97 && ascii >= 90) // a - f
+  else if (ascii <= 102 && ascii >= 97) // a - f
   {
     return ascii - 87;
   }
@@ -329,43 +329,47 @@ void selectProfile() // comment this function
   {
     if (digitalRead(keysPins[i])) // if a key is pressed
     {
-      setProfile(i);                   // set the profile from the key number
-      Serial.println("A" + String(i)); // send the profile to the software
+      setProfile(i);                                    // set the profile from the key number
+      char msg[3] = {'A', '0' + currentProfile + '\0'}; // prepare the message to send
+      Serial.println(msg);                              // send the profile to the software
     }
   }
 
-  // if (encodersPosition[1] != encodersLastValue[1]) // if the center encoder has been turn
-  // {
-  //   if (encodersPosition[1] < encodersLastValue[1]) // if is clockwise
-  //   {
-  //     if (currentProfile >= 5) // if the current profile is the last profile
-  //       currentProfile = 0;    // return to the first profile
-  //     else
-  //       currentProfile++; // increment the current profile
-  //   }
-  //   else
-  //   {
-  //     if (currentProfile <= 0) // if the current profile is the first profile
-  //       currentProfile = 5;    // return to the last profile
-  //     else
-  //       currentProfile--; // decrement the current profile
-  //   }
+  static int encodersLastValue = 0;
 
-  //   oled.setCursor(90, 25);
-  //   clearProfileNumber();
-  //   oled.print(currentProfile + 1);
+  if (encodersPosition[1] != encodersLastValue) // if the center encoder has been turn
+  {
+    if (encodersPosition[1] > encodersLastValue) // if is clockwise
+    {
+      if (currentProfile >= 5) // if the current profile is the last profile
+        currentProfile = 0;    // return to the first profile
+      else
+        currentProfile++; // increment the current profile
+    }
+    else
+    {
+      if (currentProfile <= 0) // if the current profile is the first profile
+        currentProfile = 5;    // return to the last profile
+      else
+        currentProfile--; // decrement the current profile
+    }
 
-  //   encodersLastValue[1] = encodersPosition[1];
-  //   selectProfileMillis = millis() + 500;
-  //   oled.display();
-  // }
+    oled.setCursor(90, 25);
+    clearProfileNumber();
+    oled.print(currentProfile + 1);
+
+    encodersLastValue = encodersPosition[1];
+    selectProfileMillis = millis() + 500;
+    oled.display();
+  }
 
   if (!digitalRead(encoderKey1Pin)) // select the profile when the encoder key is pressed
   {
     setProfile(currentProfile);
     encoderPressed[1] = false;
-    encoderMillis = millis();                     // reset 2s timer
-    Serial.println("A" + String(currentProfile)); // send the profile to the software
+    encoderMillis = millis();                         // reset 2s timer
+    char msg[3] = {'A', '0' + currentProfile + '\0'}; // prepare the message to send
+    Serial.println(msg);                              // send the profile to the software
   }
 }
 
@@ -497,7 +501,7 @@ void loop()
 
     serialMsgIndex++; // increment the index (null caracter)
 
-    bool validCmd = true;        // command exist ? (default : yes)
+    short validCmd = 0;          // command exist ? (default : yes) 0: OK -  1: ERROR - 2: NO awser
     char command = serialMsg[0]; // get the command (first char)
 
     bool softwareReadRequest = false;
@@ -511,12 +515,14 @@ void loop()
     if (command == 'P') // Ping
     {
       Serial.println("P"); // Pong
+      validCmd = 2;        // no awser
     }
     else if (command == 'T') // Set Text
     {
       if (softwareReadRequest)
       {
         Serial.println(textOnDisplay);
+        validCmd = 2; // no awser
       }
       else
       {
@@ -576,6 +582,7 @@ void loop()
       {
         // only command --> request the current profile from the software
         Serial.println("A" + String(currentProfile));
+        validCmd = 2; // no awser
       }
       else // set a value
       {
@@ -588,6 +595,7 @@ void loop()
       if (softwareReadRequest) // only the command
       {
         Serial.println("B" + String(macropadConfig.profile[currentProfile].name));
+        validCmd = 2; // no awser
       }
       else // set a value
       {
@@ -615,7 +623,7 @@ void loop()
       getStrArg(serialMsg, serialMsgIndex, arg); // get the arguments
       bool endOfTransmission = false;
       unsigned short tab = 0;
-      char data[2];
+      unsigned char data[2];
       while (endOfTransmission == false)
       {
         if (Serial.available() > 0)
@@ -637,10 +645,12 @@ void loop()
               // transform the ascii to hex
 
               data[1] = asciiToHex(c);
-              Serial.print(data[0]);
-              Serial.println(data[1]);
               // create hex number
-              unsigned char hex = data[0] << 8 | data[1];
+              unsigned char hex = (data[0] << 4) + data[1];
+              Serial.print("data[0]");
+              Serial.println(data[0], HEX);
+              Serial.print("data[1]");
+              Serial.println(data[1] , HEX);
               Serial.print("Result: ");
               Serial.println(hex);
               macropadConfig.profile[arg[0]].icon[tab] = hex;
@@ -655,19 +665,19 @@ void loop()
 
       for (int t = 0; t < LOGO_SIZE; t++)
       {
-        Serial.println(macropadConfig.profile[arg[0]].icon[t]);
+        Serial.print(macropadConfig.profile[arg[0]].icon[t], HEX);
       }
     }
     else
     {
-      validCmd = false; // the command is not valid
+      validCmd = 1; // the command is not valid
     }
 
-    if (validCmd)
+    if (validCmd == 0)
     {
       Serial.println(F("OK")); // ok
     }
-    else
+    else if(validCmd == 1)
     {
       Serial.println(F("ERR")); // error
     }
@@ -682,32 +692,31 @@ void loop()
   // rotary Encoder
   for (byte i = 0; i < 3; i++) // forech encoder , check if thre is a next position and change call the fonction
   {
-    int encoderPosition;
+    //----------------------------------ROTARY ENCODER-----------------------------------------------------
+    int newEncoderPosition;
     switch (i)
     {
     case 0:
-      encoderPosition = encoder0.read();
+      newEncoderPosition = encoder0.read();
       break;
     case 1:
-      encoderPosition = encoder1.read();
+      newEncoderPosition = encoder1.read();
       break;
     case 2:
-      encoderPosition = encoder2.read();
+      newEncoderPosition = encoder2.read();
       break;
     default:
       break;
     }
-    if (encoderPosition != encodersPosition[i] && encoderPosition % 4 == 0)
+    if (newEncoderPosition != encodersPosition[i] && newEncoderPosition % 4 == 0)
     {
-      Serial.println(encoderPosition);
-
       short encoderType = macropadConfig.profile[currentProfile].encoders[i].type; // get the type of the encoder from the config
 
-      if (encodersPosition[i] < encoderPosition) // Encoder ClockWise Turn
+      if (encodersPosition[i] < newEncoderPosition) // Encoder ClockWise Turn
       {
-        char encoderId = i;
+        char encoderId = '0' + i;
         char txt[4] = {'E', encoderId, 'U', '\0'}; // create the command to send to the software
-        Serial.println(txt);               // Send Encoder Up To the software
+        Serial.println(txt);                       // Send Encoder Up To the software
 
         if (encoderType == 0) // If is a System Action type
         {
@@ -721,9 +730,9 @@ void loop()
       }
       else // Encoder Anti-ClockWise Turn
       {
-        char encoderId = i;
+        char encoderId = '0' + i;
         char txt[4] = {'E', encoderId, 'D', '\0'}; // create the command to send to the software
-        Serial.println(txt);               // Send Encoder Down To the software
+        Serial.println(txt);                       // Send Encoder Down To the software
 
         if (encoderType == 0)
         {
@@ -736,7 +745,63 @@ void loop()
         }
       }
 
-      encodersPosition[i] = encoderPosition; // save the value for the next time
+      encodersPosition[i] = newEncoderPosition; // save the value for the next time
+    }
+    //----------------------------------ENCODER KEY-----------------------------------------------------
+
+    if (!digitalRead(encodersPins[i * 3 + 2])) // When encoder key is pressed
+    {
+
+      if (encoderPressed[i]) // if the encoder is already pressed
+      {
+        char encoderId = '0' + i;
+        char txt[4] = {'E', encoderId, 'K', '\0'}; // create the command to send to the software
+        Serial.println(txt);                       // Send Encoder Key To the software
+
+        if (i == 1)
+        {
+          // wait
+          // Serial.println("Already press");
+          if (encoderMillis <= millis() && selectProfileMode == false)
+          {
+            // 2 second after the begin of the press
+            // Serial.println("2S --> profile set");
+            // set profile menu
+            selectProfileMode = true;
+            textScrolling = false;
+            printCurrentProfile();
+            oled.drawBitmap(0, 10, profile_left, PROFILE_H, PROFILE_W, WHITE);
+            oled.drawBitmap(119, 10, profile_right, PROFILE_H, PROFILE_W, WHITE);
+            oled.display();
+            while (!digitalRead(encoderKey1Pin))
+            {
+            }
+            selectProfileMillis = millis() - 500;
+          }
+        }
+      }
+      else
+      { // first press of the encoder
+        // Serial.println("First press");
+        encoderPressed[i] = true; // save the value for the next time
+        encoderMillis = millis() + 1500;
+
+        short encoderType = macropadConfig.profile[currentProfile].encoders[i].type; // get the type of the encoder from the config
+
+        if (encoderType == 0) // If is a System Action type
+        {
+          Consumer.write(MEDIA_VOL_MUTE); // Mute
+        }
+        else if (encoderType == 2) // If is a key action (key combination)
+        {
+          Keyboard.write(macropadConfig.profile[currentProfile].encoders[i].values[2]); // get the ascii code, and press the key
+        }
+      }
+    }
+    else // When encoder 1 key is relese
+    {
+      // Do the action
+      encoderPressed[i] = false;
     }
   }
 
@@ -824,42 +889,6 @@ void loop()
       keyPressed[i] = false;
       Keyboard.releaseAll();
     }
-  }
-
-  if (!digitalRead(encoderKey1Pin)) // When encoder 1 key is pressed
-  {
-
-    if (encoderPressed[1])
-    { // if the encoder is already pressed
-      // wait
-      // Serial.println("Already press");
-      if (encoderMillis <= millis() && selectProfileMode == false)
-      {
-        // 2 second after the begin of the press
-        // Serial.println("2S --> profile set");
-        // set profile menu
-        selectProfileMode = true;
-        printCurrentProfile();
-        oled.drawBitmap(0, 10, profile_left, PROFILE_H, PROFILE_W, WHITE);
-        oled.drawBitmap(119, 10, profile_right, PROFILE_H, PROFILE_W, WHITE);
-        oled.display();
-        while (!digitalRead(encoderKey1Pin))
-        {
-        }
-        selectProfileMillis = millis() - 500;
-      }
-    }
-    else
-    { // first press of the encoder
-      // Serial.println("First press");
-      encoderPressed[1] = true;
-      encoderMillis = millis() + 1500;
-    }
-  }
-  else // When encoder 1 key is relese
-  {
-    // Do the action
-    encoderPressed[1] = false;
   }
 
   // download the software
