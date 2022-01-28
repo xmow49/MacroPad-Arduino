@@ -581,7 +581,8 @@ void loop()
       if (softwareReadRequest)
       {
         // only command --> request the current profile from the software
-        Serial.println("A" + String(currentProfile));
+        char msg[3] = {'A', '0' + currentProfile + '\0'}; // prepare the message to send
+        Serial.println(msg);
         validCmd = 2; // no awser
       }
       else // set a value
@@ -650,7 +651,7 @@ void loop()
               Serial.print("data[0]");
               Serial.println(data[0], HEX);
               Serial.print("data[1]");
-              Serial.println(data[1] , HEX);
+              Serial.println(data[1], HEX);
               Serial.print("Result: ");
               Serial.println(hex);
               macropadConfig.profile[arg[0]].icon[tab] = hex;
@@ -677,7 +678,7 @@ void loop()
     {
       Serial.println(F("OK")); // ok
     }
-    else if(validCmd == 1)
+    else if (validCmd == 1)
     {
       Serial.println(F("ERR")); // error
     }
@@ -754,9 +755,6 @@ void loop()
 
       if (encoderPressed[i]) // if the encoder is already pressed
       {
-        char encoderId = '0' + i;
-        char txt[4] = {'E', encoderId, 'K', '\0'}; // create the command to send to the software
-        Serial.println(txt);                       // Send Encoder Key To the software
 
         if (i == 1)
         {
@@ -783,6 +781,10 @@ void loop()
       else
       { // first press of the encoder
         // Serial.println("First press");
+        char encoderId = '0' + i;
+        char txt[4] = {'E', encoderId, 'K', '\0'}; // create the command to send to the software
+        Serial.println(txt);                       // Send Encoder Key To the software
+
         encoderPressed[i] = true; // save the value for the next time
         encoderMillis = millis() + 1500;
 
