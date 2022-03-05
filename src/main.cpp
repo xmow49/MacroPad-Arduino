@@ -3,8 +3,8 @@
 #include <MemoryUsage.h>
 #include <Encoder.h>
 
-#define HID_CUSTOM_LAYOUT
-#define LAYOUT_FRENCH
+// #define HID_CUSTOM_LAYOUT
+// #define LAYOUT
 #include <HID-Project.h> //Keyboard ++
 #include <EEPROM.h>
 
@@ -60,7 +60,7 @@ bool selectProfileMode = false;      // If is true, all function are disabled, a
 unsigned long encoderMillis;
 unsigned long selectProfileMillis = 0; // to blink the profile number
 
-byte currentProfile = 0; // Current selected profile is 0 by default
+unsigned char currentProfile = 0; // Current selected profile is 0 by default
 
 const byte repeatDelay = 5;  //
 unsigned long currentMillis; // ----------------------------a renomer
@@ -88,7 +88,7 @@ String getArgs(String data, char separator, short index)
 
 void getStrArg(const char serialMsg[], unsigned short serialMsgIndex, short argOutput[])
 {
-  char charArg[10];
+  char charArg[PROFILE_TEXT_LENGTH];
   for (unsigned int i = 2, lastArgIndex = 2, argIndex = 0; i < serialMsgIndex; i++) // foreach caracter in serialMsg
   {
     if (serialMsg[i] == ' ' || i == serialMsgIndex - 1) // if we have a space
@@ -289,7 +289,7 @@ void setProfile(byte profile)
   }
   else
   {
-    displayOnScreen("Waiting Software");
+    displayOnScreen("Connecting");
   }
 
   setRGB(macropadConfig.profile[currentProfile].color[0], macropadConfig.profile[currentProfile].color[1], macropadConfig.profile[currentProfile].color[2]);
@@ -501,7 +501,7 @@ void loop()
 
     serialMsgIndex++; // increment the index (null caracter)
 
-    short validCmd = 0;          // command exist ? (default : yes) 0: OK -  1: ERROR - 2: NO awser
+    short validCmd = 1;          // command exist ? (default : yes) 0: ERROR -  1: YES  - 2: NO awser
     char command = serialMsg[0]; // get the command (first char)
 
     bool softwareReadRequest = false;
@@ -512,12 +512,16 @@ void loop()
 
     short arg[6]; // store all numerical arguments (max 6)
     //-------------------------Processing command-------------------------
-    if (command == 'P') // Ping
+
+    switch (command)
+    {
+    case 'P': // ping
     {
       Serial.println("P"); // Pong
       validCmd = 2;        // no awser
     }
-    else if (command == 'T') // Set Text
+    break;
+    case 'T': // Set Text
     {
       if (softwareReadRequest)
       {
@@ -530,20 +534,21 @@ void loop()
         displayOnScreen(txt);
       }
     }
-    else if (command == 'S') // save-config command
-    {
-      saveToEEPROM(); // save the config in the EEPROM
-    }
-    else if (command == 'R') // read-config command
-    {
-      readEEPROM(); // read the config from the EEPROM
-    }
-    else if (command == 'Z') // reset all the config to 0
-    {
-      resetConfig();
-    }
+    break;
 
-    else if (command == 'K') // Set Key: K <profile> <n key> <type> <value> <value optional> <value optional>
+    case 'S':         // save-config command
+      saveToEEPROM(); // save the config in the EEPROM
+      break;
+
+    case 'R':       // read-config command
+      readEEPROM(); // read the config from the EEPROM
+      break;
+
+    case 'Z': // reset all the config to 0
+      resetConfig();
+      break;
+
+    case 'K': // Set Key: K <profile> <n key> <type> <value> <value optional> <value optional>
     {
       getStrArg(serialMsg, serialMsgIndex, arg);                 // get the arguments
       macropadConfig.profile[arg[0]].keys[arg[1]].type = arg[2]; // Set the type of the key
@@ -552,8 +557,9 @@ void loop()
         macropadConfig.profile[arg[0]].keys[arg[1]].values[i] = arg[i + 3]; // Set the value of the key
       }
     }
+    break;
 
-    else if (command == 'E') // Set encoder action: E <profile> <n encoder> <type> <value> <value optional> <value optional>
+    case 'E': // Set encoder action: E <profile> <n encoder> <type> <value> <value optional> <value optional>
     {
       getStrArg(serialMsg, serialMsgIndex, arg);                     // get the arguments
       macropadConfig.profile[arg[0]].encoders[arg[1]].type = arg[2]; // Get the mode and save it in the config
@@ -562,7 +568,9 @@ void loop()
         macropadConfig.profile[arg[0]].encoders[arg[1]].values[i] = arg[i + 3]; // Save Values
       }
     }
-    else if (command == 'C') // C <profile> <Red: 0 - 255> <Green: 0 - 255> <Blue: 0 - 255>
+    break;
+
+    case 'C': // C <profile> <Red: 0 - 255> <Green: 0 - 255> <Blue: 0 - 255>
     {
       getStrArg(serialMsg, serialMsgIndex, arg); // get the arguments
       byte profile = arg[0];
@@ -575,8 +583,9 @@ void loop()
         setRGB(arg[1], arg[2], arg[3]); // Set RGB LED color to rgb value from the command :
       }
     }
+    break;
 
-    else if (command == 'A') // select/get profile
+    case 'A': // select/get profile
     {
       if (softwareReadRequest)
       {
@@ -591,7 +600,9 @@ void loop()
         setProfile(arg[0]);                        // set the profile
       }
     }
-    else if (command == 'B') // set/get profile Name
+    break;
+
+    case 'B': // set/get profile Name
     {
       if (softwareReadRequest) // only the command
       {
@@ -613,13 +624,17 @@ void loop()
         }
       }
     }
-    else if (command == 'D')
+    break;
+
+    case 'D': // set display type
     {
       getStrArg(serialMsg, serialMsgIndex, arg);            // get the arguments
       byte profile = arg[0];                                // Get the profile number
       macropadConfig.profile[profile].displayType = arg[1]; // Set the type of the display
     }
-    else if (command == 'I') // set icon
+    break;
+
+    case 'I':
     {
       getStrArg(serialMsg, serialMsgIndex, arg); // get the arguments
       bool endOfTransmission = false;
@@ -669,19 +684,21 @@ void loop()
         Serial.print(macropadConfig.profile[arg[0]].icon[t], HEX);
       }
     }
-    else
-    {
-      validCmd = 1; // the command is not valid
+    break;
+
+    default:
+      validCmd = 0; // the command is not valid
+      break;
     }
 
-    if (validCmd == 0)
-    {
+    if (validCmd == 1)
       Serial.println(F("OK")); // ok
-    }
-    else if (validCmd == 1)
+    else if (validCmd == 2)
     {
-      Serial.println(F("ERR")); // error
     }
+    // no anwser
+    else
+      Serial.println(F("ERR")); // error
 
     serialMsgIndex = 0; // reset the index
     serialMsg[0] = 0;
@@ -840,25 +857,26 @@ void loop()
         {
           for (byte j = 0; j < 3; j++) // for each key
           {
-            if (keyValues[j] == 0 && keyValues[j] != 60) // if no key and key 60 (<) because impoved keyboard
-            {
-            }
-            else if (keyValues[j] <= 32 && keyValues[j] >= 8) // function key (spaces, shift, etc)
-            {
-              Keyboard.press(keyValues[j]);
-            }
-            else if (keyValues[j] <= 90 && keyValues[j] >= 65) // alaphabet
-            {                                                  // ascii normal code exept '<' (60)
-              Keyboard.press(keyValues[j] + 32);               // Normal character + 32 (ascii Upercase to lowcase)
-            }
-            else if (keyValues[j] <= 57 && keyValues[j] >= 48) // numbers
-            {
-              Keyboard.press(keyValues[j]); // Normal number
-            }
-            else
-            {
-              Keyboard.press(KeyboardKeycode(keyValues[j])); // Improved keyboard
-            }
+            Keyboard.press(KeyboardKeycode(keyValues[j])); // Improved keyboard
+            // if (keyValues[j] == 0 && keyValues[j] != 60) // if no key and key 60 (<) because impoved keyboard
+            // {
+            // }
+            // else if (keyValues[j] <= 32 && keyValues[j] >= 8) // function key (spaces, shift, etc)
+            // {
+            //   Keyboard.press(keyValues[j]);
+            // }
+            // else if (keyValues[j] <= 90 && keyValues[j] >= 65) // alaphabet
+            // {                                                  // ascii normal code exept '<' (60)
+            //   Keyboard.press(keyValues[j] + 32);               // Normal character + 32 (ascii Upercase to lowcase)
+            // }
+            // else if (keyValues[j] <= 57 && keyValues[j] >= 48) // numbers
+            // {
+            //   Keyboard.press(keyValues[j]); // Normal number
+            // }
+            // else
+            // {
+            //   Keyboard.press(KeyboardKeycode(keyValues[j])); // Improved keyboard
+            // }
           }
 
           // while (digitalRead(keysPins[i]))
