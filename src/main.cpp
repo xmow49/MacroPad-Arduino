@@ -501,7 +501,7 @@ void loop()
     //------------------------------------------------Serial --------------------------------------------------
     static char serialMsg[SERIAL_TEXT_LENGTH];
     static unsigned short serialMsgIndex = 0;
-    if (Serial.available() > 0) // if incomming bytes
+    while (Serial.available() > 0) // if incomming bytes
     {
       if (serialMsgIndex < SERIAL_TEXT_LENGTH - 1)
       {
@@ -513,7 +513,8 @@ void loop()
         char trash = (char)Serial.read();
       }
     }
-    else if (serialMsg[0] != 0) // msg not empty --> all serial msg has been read
+    
+    if (serialMsg[0] != 0) // msg not empty --> all serial msg has been read
     {
 
       //-------------------Serial msg processing-------------------
@@ -558,8 +559,9 @@ void loop()
         }
         else
         {
-          char *txt = &serialMsg[2]; // remove the command and the space (2 first char)
-          displayOnScreen(txt);
+          // char *txt = &serialMsg[2]; // remove the command and the space (2 first char)
+          // Serial.println(&serialMsg[2]);
+          displayOnScreen(&serialMsg[2]);
         }
       }
       break;
@@ -771,7 +773,7 @@ void loop()
           }
           else if (encoderType == 2) // If is a key action (key combination)
           {
-            Keyboard.write(macropadConfig.profile[currentProfile].encoders[i].values[1]); // get the ascii code, and press the key
+            Keyboard.write(KeyboardKeycode(macropadConfig.profile[currentProfile].encoders[i].values[1])); // get the ascii code, and press the key
           }
         }
         else // Encoder Anti-ClockWise Turn
@@ -785,9 +787,9 @@ void loop()
             Consumer.write(MEDIA_VOL_DOWN);
             // Consumer.write(HID_CONSUMER_REWIND);
           }
-          else if (encoderType == 1) // If is a key action
+          else if (encoderType == 2) // If is a key action
           {
-            Keyboard.write(macropadConfig.profile[currentProfile].encoders[i].values[0]); // get the ascii code, and press the key
+            Keyboard.write(KeyboardKeycode(macropadConfig.profile[currentProfile].encoders[i].values[0])); // get the ascii code, and press the key
           }
         }
 
@@ -841,7 +843,7 @@ void loop()
           }
           else if (encoderType == 2) // If is a key action (key combination)
           {
-            Keyboard.write(macropadConfig.profile[currentProfile].encoders[i].values[2]); // get the ascii code, and press the key
+            Keyboard.write(KeyboardKeycode(macropadConfig.profile[currentProfile].encoders[i].values[2])); // get the ascii code, and press the key
           }
         }
       }
@@ -886,25 +888,6 @@ void loop()
             for (byte j = 0; j < 3; j++) // for each key
             {
               Keyboard.press(KeyboardKeycode(keyValues[j])); // Improved keyboard
-              // if (keyValues[j] == 0 && keyValues[j] != 60) // if no key and key 60 (<) because impoved keyboard
-              // {
-              // }
-              // else if (keyValues[j] <= 32 && keyValues[j] >= 8) // function key (spaces, shift, etc)
-              // {
-              //   Keyboard.press(keyValues[j]);
-              // }
-              // else if (keyValues[j] <= 90 && keyValues[j] >= 65) // alaphabet
-              // {                                                  // ascii normal code exept '<' (60)
-              //   Keyboard.press(keyValues[j] + 32);               // Normal character + 32 (ascii Upercase to lowcase)
-              // }
-              // else if (keyValues[j] <= 57 && keyValues[j] >= 48) // numbers
-              // {
-              //   Keyboard.press(keyValues[j]); // Normal number
-              // }
-              // else
-              // {
-              //   Keyboard.press(KeyboardKeycode(keyValues[j])); // Improved keyboard
-              // }
             }
 
             // while (digitalRead(keysPins[i]))
