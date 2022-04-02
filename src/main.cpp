@@ -15,6 +15,8 @@
 #include <Adafruit_SSD1306.h>
 #include <Fonts/FreeSans12pt7b.h>
 
+
+
 bool textScrolling = false;             // Store the state of text scrolling
 short textX;                            // Store the current X position of the text
 short textY = 24;                       // Store the current Y position of the text
@@ -68,7 +70,7 @@ const byte repeatDelay = 5;  //
 unsigned long currentMillis; // ----------------------------a renomer
 unsigned long tickTime;      // for the scrolling text
 
-bool lastUSBState = true;
+bool lastUSBState = false;
 
 String getArgs(String data, char separator, short index)
 {
@@ -163,6 +165,7 @@ void saveToEEPROM() // Save all config into the atmega eeprom
 
 void readEEPROM() // Read all config from the atmega eeprom and store it into the temp config
 {
+  
   EEPROM.get(0, macropadConfig);
 }
 
@@ -181,7 +184,7 @@ void scrollText() // function to scoll the text into the display
     {
       tickTime = millis() + 30;
 
-      short textRtn = -10 * strlen(textOnDisplay);
+      short textRtn = -12 * strlen(textOnDisplay);
       if (textX > textRtn)
         textX -= 1;
       else
@@ -293,7 +296,7 @@ void setProfile(byte profile)
   }
   else
   {
-    displayOnScreen("Connecting");
+    displayOnScreen("...");
   }
 
   setRGB(macropadConfig.profile[currentProfile].color[0], macropadConfig.profile[currentProfile].color[1], macropadConfig.profile[currentProfile].color[2]);
@@ -474,10 +477,10 @@ void setup()
 
 void loop()
 {
-  if (isUSBDataEstablished() != lastUSBState)
+  if (USBDevice.isSuspended() != lastUSBState)
   { // new usb state
-    lastUSBState = isUSBDataEstablished();
-    if (lastUSBState == 0)
+    lastUSBState = USBDevice.isSuspended();
+    if (lastUSBState == 1)
     { // no pc
       // Sleep Mode
 
@@ -495,7 +498,7 @@ void loop()
     }
   }
 
-  if(lastUSBState) // connected to a pc
+  if(!lastUSBState) // connected to a pc
   {
 
     //------------------------------------------------Serial --------------------------------------------------
@@ -661,6 +664,10 @@ void loop()
         getStrArg(serialMsg, serialMsgIndex, arg);            // get the arguments
         byte profile = arg[0];                                // Get the profile number
         macropadConfig.profile[profile].displayType = arg[1]; // Set the type of the display
+        if (profile == currentProfile)                        // if its the current profile
+        {
+          setProfile(profile); // update the screen
+        }
       }
       break;
 
