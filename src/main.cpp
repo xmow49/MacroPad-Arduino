@@ -15,7 +15,7 @@
 #include <Adafruit_SSD1306.h>
 #include <Fonts/FreeSans12pt7b.h>
 
-
+#define CURRENT_VERSION "1.0.0-atmega32u4"
 
 bool textScrolling = false;             // Store the state of text scrolling
 short textX;                            // Store the current X position of the text
@@ -720,6 +720,12 @@ void loop()
         {
           Serial.print(macropadConfig.profile[arg[0]].icon[t], HEX);
         }
+      }
+      break;
+
+      case 'V':{
+        Serial.println("V"CURRENT_VERSION);
+        validCmd = 2; // no more awser
       }
       break;
 
