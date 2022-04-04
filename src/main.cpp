@@ -15,7 +15,7 @@
 #include <Adafruit_SSD1306.h>
 #include <Fonts/FreeSans12pt7b.h>
 
-#define CURRENT_VERSION "1.0.0-atmega32u4"
+#define CURRENT_VERSION "V1.0.2-atmega32u4"
 
 bool textScrolling = false;             // Store the state of text scrolling
 short textX;                            // Store the current X position of the text
@@ -165,7 +165,7 @@ void saveToEEPROM() // Save all config into the atmega eeprom
 
 void readEEPROM() // Read all config from the atmega eeprom and store it into the temp config
 {
-  
+
   EEPROM.get(0, macropadConfig);
 }
 
@@ -252,7 +252,7 @@ void displayOnScreen(const char txt[]) // display test on screen, check if is ce
     oled.clearDisplay();
 
     // Serial.print(F("Preparing cursor "));
-    oled.setCursor((SCREEN_WIDTH - textW) / 2, (SCREEN_HEIGHT + textH) / 2); // set the cursor in the good position
+    oled.setCursor((SCREEN_WIDTH - textW) / 2, textY); // set the cursor in the good position
     // Serial.println(F("...Done"));
 
     // Serial.print(F("Preparing print "));
@@ -332,16 +332,6 @@ void selectProfile() // comment this function
     oled.display();
   }
 
-  for (byte i = 0; i <= 5; i++) // foreach key
-  {
-    if (digitalRead(keysPins[i])) // if a key is pressed
-    {
-      setProfile(i);                                    // set the profile from the key number
-      char msg[3] = {'A', '0' + currentProfile + '\0'}; // prepare the message to send
-      Serial.println(msg);                              // send the profile to the software
-    }
-  }
-
   static int encodersLastValue = 0;
 
   if (encodersPosition[1] != encodersLastValue) // if the center encoder has been turn
@@ -374,9 +364,20 @@ void selectProfile() // comment this function
   {
     setProfile(currentProfile);
     encoderPressed[1] = false;
-    encoderMillis = millis();                         // reset 2s timer
-    char msg[3] = {'A', '0' + currentProfile + '\0'}; // prepare the message to send
-    Serial.println(msg);                              // send the profile to the software
+    encoderMillis = millis();                                // reset 2s timer
+    char msg[3] = {'A', (char)('0' + currentProfile), '\0'}; // prepare the message to send
+    Serial.println(msg);                                     // send the profile to the software
+  }
+
+  for (byte i = 0; i <= 5; i++) // foreach key
+  {
+    if (digitalRead(keysPins[i])) // if a key is pressed
+    {
+      setProfile(i);                                           // set the profile from the key number
+      char msg[3] = {'A', (char)('0' + currentProfile), '\0'}; // prepare the message to send
+      Serial.println(msg);                                     // send the profile to the software
+      keyPressed[i] = true;                                    // set the keyPressed to true
+    }
   }
 }
 
@@ -493,12 +494,13 @@ void loop()
       analogWrite(ledG, 0);
       analogWrite(ledB, 0);
     }
-    else{
-      setProfile(0); //restart the macropad
+    else
+    {
+      setProfile(0); // restart the macropad
     }
   }
 
-  if(!lastUSBState) // connected to a pc
+  if (!lastUSBState) // connected to a pc
   {
 
     //------------------------------------------------Serial --------------------------------------------------
@@ -513,10 +515,11 @@ void loop()
       }
       else
       {
-        char trash = (char)Serial.read();
+        // char trash = (char)Serial.read();
+        Serial.read();
       }
     }
-    
+
     if (serialMsg[0] != 0) // msg not empty --> all serial msg has been read
     {
 
@@ -623,7 +626,7 @@ void loop()
         if (softwareReadRequest)
         {
           // only command --> request the current profile from the software
-          char msg[3] = {'A', '0' + currentProfile + '\0'}; // prepare the message to send
+          char msg[3] = {'A', (char)('0' + currentProfile), '\0'}; // prepare the message to send
           Serial.println(msg);
           validCmd = 2; // no awser
         }
@@ -723,8 +726,9 @@ void loop()
       }
       break;
 
-      case 'V':{
-        Serial.println("V"CURRENT_VERSION);
+      case 'V':
+      {
+        Serial.println(CURRENT_VERSION);
         validCmd = 2; // no more awser
       }
       break;
